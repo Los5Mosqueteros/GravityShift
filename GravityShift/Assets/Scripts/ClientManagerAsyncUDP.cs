@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using TMPro;
 using System.Collections.Generic;
+using System;
 
 public class ClientManagerAsyncUDP : MonoBehaviour
 {
@@ -93,6 +94,23 @@ public class ClientManagerAsyncUDP : MonoBehaviour
                 Log("Desconectado del servidor UDP.");
                 break;
             }
+        }
+    }
+
+    public async void SendPlayerData(PlayerData playerData)
+    {
+        if (udpClient == null) return;
+
+        try
+        {
+            string json = SerializerUtility.ToJson(playerData);
+            byte[] data = Encoding.UTF8.GetBytes(json);
+            await udpClient.SendAsync(data, data.Length, serverEndPoint);
+            Log($"Datos del jugador enviados: {playerData.playerName}");
+        }
+        catch (Exception e)
+        {
+            Log("Error enviando datos del jugador: " + e.Message);
         }
     }
 

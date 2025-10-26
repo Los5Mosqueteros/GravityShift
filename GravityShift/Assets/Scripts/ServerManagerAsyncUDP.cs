@@ -35,6 +35,21 @@ public class ServerManagerAsyncUDP : MonoBehaviour
                 string msg = Encoding.UTF8.GetString(result.Buffer);
                 IPEndPoint clientEP = result.RemoteEndPoint;
 
+                try
+                {
+                    PlayerData playerData = JsonUtility.FromJson<PlayerData>(msg);
+                    if (!string.IsNullOrEmpty(playerData.playerId))
+                    {
+                        Log($"[Servidor] Datos recibidos de {playerData.playerName}: Pos {playerData.position.x}, {playerData.position.y}, {playerData.position.z}");
+                        await BroadcastAsync($"[Servidor]: {playerData.playerName} está en {playerData.position.x}, {playerData.position.y}, {playerData.position.z}");
+                        continue;
+                    }
+                }
+                catch
+                {
+                    // No es JSON válido de PlayerData, tonses seguimos como mensaje normal :D
+                }
+
                 if (!connectedClients.ContainsKey(clientEP))
                 {
                     connectedClients[clientEP] = msg;
