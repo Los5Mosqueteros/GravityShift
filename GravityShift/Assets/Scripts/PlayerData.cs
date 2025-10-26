@@ -1,27 +1,17 @@
-using System;
 using UnityEngine;
+using System;
 
 [Serializable]
 public class PlayerData
 {
-    public string playerId;
     public string playerName;
-    public Vector3Serializable position;
-    public int health;
-    public bool isGravityInverted;
+    public Vector3 position;
+    public Vector3 rotation;
 
-    public PlayerData(string id, string name, Vector3 pos)
+    public PlayerData(string name, Vector3 pos, Vector3 rot)
     {
-        playerId = id;
         playerName = name;
-        position = new Vector3Serializable(pos);
-        health = 100;
-        isGravityInverted = false;
+        position = pos;
+        rotation = rot;
     }
-
-    public void ToggleGravity()
-    {
-        isGravityInverted = !isGravityInverted;
-    }
-
 }
