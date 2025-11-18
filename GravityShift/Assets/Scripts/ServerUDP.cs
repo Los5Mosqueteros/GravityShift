@@ -23,7 +23,16 @@ public class ServerUDP : MonoBehaviour
     private UdpClient udpServer;
     private bool isRunning = false;
 
-    private List<IPEndPoint> connectedClients = new List<IPEndPoint>();
+    private Dictionary<IPEndPoint, string> clientIDs = new Dictionary<IPEndPoint, string>();
+
+    private class PlayerInfo
+    {
+        public string guid;
+        public string name;
+        public Vector3 pos;
+        public Vector3 rot;
+    }
+    private Dictionary<string, PlayerInfo> clientInfos = new Dictionary<string, PlayerInfo>();
 
     private async void Start()
     {
@@ -57,12 +66,6 @@ public class ServerUDP : MonoBehaviour
                 string msg = Encoding.UTF8.GetString(result.Buffer);
                 IPEndPoint sender = result.RemoteEndPoint;
 
-                if (!connectedClients.Exists(c => c.Address.Equals(sender.Address)))
-                {
-                    connectedClients.Add(sender);
-                    Log($"Nuevo cliente conectado: {sender.Address}:{sender.Port}");
-                }
-
                 PlayerData data = null;
                 try
                 {
@@ -70,11 +73,71 @@ public class ServerUDP : MonoBehaviour
                 }
                 catch { }
 
-                if (data != null && !string.IsNullOrEmpty(data.playerName))
+                if (!clientIDs.ContainsKey(sender))
                 {
-                    Log($"{data.playerName} Pos: {data.position} Rot: {data.rotation}");
+                    if (data == null)
+                    {
+                        Log($"Cliente nuevo desde {sender} envió mensaje no JSON: {msg}");
+                        continue;
+                    }
 
-                    await BroadcastMessageAsync(msg);
+                    string guid = Guid.NewGuid().ToString();
+                    clientIDs[sender] = guid;
+
+                    Log($"Nuevo cliente conectado desde {sender.Address}:{sender.Port} -> GUID {guid}");
+
+                    PlayerData spawnForSelf = new PlayerData(guid, data.playerName, Vector3.zero, Vector3.zero, "spawn");
+                    spawnForSelf.token = data.token;
+                    await SendTo(sender, JsonUtility.ToJson(spawnForSelf));
+
+                    foreach (var kv in clientInfos)
+                    {
+                        var info = kv.Value;
+                        PlayerData existing = new PlayerData(info.guid, info.name, info.pos, info.rot, "spawn");
+                        await SendTo(sender, JsonUtility.ToJson(existing));
+                    }
+
+                    PlayerData spawnForOthers = new PlayerData(guid, data.playerName, Vector3.zero, Vector3.zero, "spawn");
+                    await BroadcastExcept(JsonUtility.ToJson(spawnForOthers), sender);
+
+                    PlayerInfo pi = new PlayerInfo() { guid = guid, name = data.playerName, pos = Vector3.zero, rot = Vector3.zero };
+                    clientInfos[guid] = pi;
+
+                    continue;
+                }
+
+                if (data != null)
+                {
+                    string guid = clientIDs[sender];
+
+                    if (data.type == "update")
+                    {
+                        if (clientInfos.TryGetValue(guid, out PlayerInfo info))
+                        {
+                            info.pos = data.position;
+                            info.rot = data.rotation;
+                        }
+                        else
+                        {
+                            clientInfos[guid] = new PlayerInfo() { guid = guid, name = data.playerName, pos = data.position, rot = data.rotation };
+                        }
+
+                        data.id = guid;
+                        data.type = "update";
+                        string jsonUpdate = JsonUtility.ToJson(data);
+                        await Broadcast(jsonUpdate);
+                    }
+                    else if (data.type == "disconnect")
+                    {
+                        Log($"Cliente {guid} solicita desconexión.");
+
+                        PlayerData disc = new PlayerData(guid, data.playerName, Vector3.zero, Vector3.zero, "disconnect");
+                        string jsonDisc = JsonUtility.ToJson(disc);
+                        await BroadcastExcept(jsonDisc, sender);
+
+                        clientInfos.Remove(guid);
+                        clientIDs.Remove(sender);
+                    }
                 }
                 else
                 {
@@ -88,11 +151,11 @@ public class ServerUDP : MonoBehaviour
         }
     }
 
-    private async Task BroadcastMessageAsync(string msg)
+    private async Task Broadcast(string msg)
     {
         byte[] data = Encoding.UTF8.GetBytes(msg);
 
-        foreach (var client in connectedClients)
+        foreach (var client in clientIDs.Keys)
         {
             try
             {
@@ -105,15 +168,46 @@ public class ServerUDP : MonoBehaviour
         }
     }
 
-    private void Log(string message)
+    private async Task BroadcastExcept(string msg, IPEndPoint except)
+    {
+        byte[] data = Encoding.UTF8.GetBytes(msg);
+
+        foreach (var client in clientIDs.Keys)
+        {
+            if (client.Equals(except)) continue;
+            try
+            {
+                await udpServer.SendAsync(data, data.Length, client);
+            }
+            catch (Exception e)
+            {
+                Log($"Error enviando a {client.Address}:{client.Port} -> {e.Message}");
+            }
+        }
+    }
+
+    private async Task SendTo(IPEndPoint end, string msg)
+    {
+        byte[] data = Encoding.UTF8.GetBytes(msg);
+        try
+        {
+            await udpServer.SendAsync(data, data.Length, end);
+        }
+        catch (Exception e)
+        {
+            Log($"Error enviando a {end.Address}:{end.Port} -> {e.Message}");
+        }
+    }
+
+    private void Log(string msg)
     {
         if (!showLogs) return;
 
-        Debug.Log(message);
+        Debug.Log(msg);
 
         if (logText != null)
         {
-            logQueue.Enqueue(message);
+            logQueue.Enqueue(msg);
 
             while (logQueue.Count > maxLogMessages)
             {

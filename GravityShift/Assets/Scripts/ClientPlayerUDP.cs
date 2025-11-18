@@ -4,12 +4,15 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 using System;
+using System.Collections.Generic;
 
 public class ClientPlayerUDP : MonoBehaviour
 {
     [Header("Player Settings")]
     public Transform playerTransform; 
     public string playerName = "Player";
+    public GameObject remotePlayerPrefab;
+    public GameObject localPlayerPrefab;
 
     [Header("Network Settings")]
     public string serverIP = "127.0.0.1";
@@ -20,8 +23,14 @@ public class ClientPlayerUDP : MonoBehaviour
     private IPEndPoint serverEndPoint;
     private bool isRunning = false;
 
+    private string localToken;
+    private string ID = null;
+
+    private Dictionary<string, GameObject> remotePlayers = new Dictionary<string, GameObject>();
+
     private async void Start()
     {
+        localToken = Guid.NewGuid().ToString();
         await ConnectToServer();
     }
 
@@ -34,12 +43,15 @@ public class ClientPlayerUDP : MonoBehaviour
 
             Debug.Log($"Conectado al servidor UDP en {serverIP}:{port}");
 
-            byte[] nameData = Encoding.UTF8.GetBytes(playerName);
-            await udpClient.SendAsync(nameData, nameData.Length, serverEndPoint);
+            PlayerData connect = new PlayerData("", playerName, Vector3.zero, Vector3.zero, "connect");
+            connect.token = localToken;
+
+            string firstPacket = JsonUtility.ToJson(connect);
+            byte[] data = Encoding.UTF8.GetBytes(firstPacket);
+            await udpClient.SendAsync(data, data.Length, serverEndPoint);
 
             isRunning = true;
-            _ = ReceiveMessagesAsync();
-            _ = SendPlayerDataLoop();
+            _ = ReceiveMessages();
         }
         catch (Exception e)
         {
@@ -51,21 +63,22 @@ public class ClientPlayerUDP : MonoBehaviour
     {
         while (isRunning)
         {
-            if (playerTransform != null)
+            if (playerTransform != null && ID != null)
             {
                 var data = new PlayerData(
-                    playerName,
-                    playerTransform.position,
-                    playerTransform.rotation.eulerAngles
+                    ID, 
+                    playerName, 
+                    playerTransform.position, 
+                    playerTransform.rotation.eulerAngles, 
+                    "update"
                 );
-
                 string json = JsonUtility.ToJson(data);
                 byte[] bytes = Encoding.UTF8.GetBytes(json);
 
                 try
                 {
                     await udpClient.SendAsync(bytes, bytes.Length, serverEndPoint);
-                    Debug.Log($"Enviado: {json}");
+                    //Debug.Log($"Enviado: {json}");
                 }
                 catch (Exception e)
                 {
@@ -77,7 +90,7 @@ public class ClientPlayerUDP : MonoBehaviour
         }
     }
 
-    private async Task ReceiveMessagesAsync()
+    private async Task ReceiveMessages()
     {
         while (isRunning)
         {
@@ -85,13 +98,88 @@ public class ClientPlayerUDP : MonoBehaviour
             {
                 UdpReceiveResult result = await udpClient.ReceiveAsync();
                 string msg = Encoding.UTF8.GetString(result.Buffer);
-                Debug.Log("Servidor: " + msg);
+                //Debug.Log("Servidor: " + msg);
+
+                PlayerData data = JsonUtility.FromJson<PlayerData>(msg);
+                HandleMessage(data);
             }
             catch
             {
-                Debug.Log("Desconectado del servidor UDP.");
                 isRunning = false;
+                Debug.Log("Desconectado del servidor UDP.");
             }
+        }
+    }
+
+    private void HandleMessage(PlayerData data)
+    {
+        if (data == null) return;
+
+        if (ID == null && data.type == "spawn" && !string.IsNullOrEmpty(data.token) && data.token == localToken)
+        {
+            ID = data.id;
+            Debug.Log($"Mi GUID asignado por el servidor: {ID}");
+
+            GameObject local = Instantiate(localPlayerPrefab);
+            playerTransform = local.transform;
+
+            _ = SendPlayerDataLoop();
+
+            return;
+        }
+
+        if (!string.IsNullOrEmpty(data.id) && data.id == ID) return;
+
+        switch (data.type)
+        {
+            case "spawn":
+                SpawnRemotePlayer(data);
+                break;
+
+            case "update":
+                UpdateRemotePlayer(data);
+                break;
+
+            case "disconnect":
+                RemoveRemotePlayer(data.id);
+                break;
+        }
+    }
+
+    private void SpawnRemotePlayer(PlayerData data)
+    {
+        if (string.IsNullOrEmpty(data.id)) return;
+        if (remotePlayers.ContainsKey(data.id)) return;
+
+        GameObject remote = Instantiate(remotePlayerPrefab);
+        remote.name = "Player_" + data.id;
+        remote.transform.position = data.position;
+        remote.transform.rotation = Quaternion.Euler(data.rotation);
+
+        remotePlayers.Add(data.id, remote);
+
+        Debug.Log($"Spawn remoto: {data.id} ({data.playerName})");
+    }
+
+    private void UpdateRemotePlayer(PlayerData data)
+    {
+        if (string.IsNullOrEmpty(data.id)) return;
+
+        if (!remotePlayers.TryGetValue(data.id, out GameObject p)) return;
+
+        p.transform.position = data.position;
+        p.transform.rotation = Quaternion.Euler(data.rotation);
+    }
+
+    private void RemoveRemotePlayer(string id)
+    {
+        if (string.IsNullOrEmpty(id)) return;
+
+        if (remotePlayers.TryGetValue(id, out GameObject p))
+        {
+            Destroy(p);
+            remotePlayers.Remove(id);
+            Debug.Log($"Jugador remoto {id} desconectado y destruido.");
         }
     }
 
