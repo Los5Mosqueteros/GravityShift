@@ -9,6 +9,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5198372333126302163}
+  - component: {fileID: -1918218467755202916}
   m_Layer: 0
   m_Name: RemotePlayer
   m_TagString: Untagged
@@ -32,6 +33,20 @@ Transform:
   - {fileID: 4083014150939646427}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &-1918218467755202916
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 160597388187147674}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c2e3ae36c3cf624a9c4d15007852865, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  interpolationSpeed: 10
+  maxExtrapolationTime: 0.25
 --- !u!1 &1200559129316805992
 GameObject:
   m_ObjectHideFlags: 0
