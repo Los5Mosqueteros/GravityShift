@@ -57,12 +57,12 @@ public class Rifle : MonoBehaviour
         Vector3 targetPoint = ray.origin + ray.direction * raycastDistance;
         Vector3 shootDirection = (targetPoint - spawnPos).normalized;
         
-        Debug.DrawLine(ray.origin, targetPoint, Color.red, 1f);
+        //Debug.DrawLine(ray.origin, targetPoint, Color.red, 1f);
         
         GameObject bullet = Instantiate(bulletPrefab, spawnPos, Quaternion.identity);
         bullet.transform.rotation = Quaternion.FromToRotation(Vector3.left, shootDirection);
         
-        Debug.DrawLine(spawnPos, spawnPos + shootDirection * raycastDistance, Color.green, 1f);
+        //Debug.DrawLine(spawnPos, spawnPos + shootDirection * raycastDistance, Color.green, 1f);
         
         Projectile projectile = bullet.GetComponent<Projectile>();
         
