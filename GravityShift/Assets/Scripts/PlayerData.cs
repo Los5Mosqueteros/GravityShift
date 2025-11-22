@@ -11,6 +11,8 @@ public class PlayerData
     public Vector3 rotation;
     public string type;         // Spawn, Update, Disconnect
 
+    public int team;
+
     public PlayerData(string id, string playerName, Vector3 position, Vector3 rotation, string type)
     {
         this.id = id;

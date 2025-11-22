@@ -31,8 +31,13 @@ public class ServerUDP : MonoBehaviour
         public string name;
         public Vector3 pos;
         public Vector3 rot;
+
+        public int team;
+
     }
     private Dictionary<string, PlayerInfo> clientInfos = new Dictionary<string, PlayerInfo>();
+
+    private TeamManager teamManager = new TeamManager();
 
     private async void Start()
     {
@@ -86,6 +91,9 @@ public class ServerUDP : MonoBehaviour
 
                     Log($"Nuevo cliente conectado desde {sender.Address}:{sender.Port} -> GUID {guid}");
 
+                    int team = teamManager.AssignTeam(guid);
+                    Log($"Jugador {guid} asignado al equipo {team}");
+
                     PlayerData spawnForSelf = new PlayerData(guid, data.playerName, Vector3.zero, Vector3.zero, "spawn");
                     spawnForSelf.token = data.token;
                     await SendTo(sender, JsonUtility.ToJson(spawnForSelf));
@@ -98,10 +106,10 @@ public class ServerUDP : MonoBehaviour
                     }
 
                     PlayerData spawnForOthers = new PlayerData(guid, data.playerName, Vector3.zero, Vector3.zero, "spawn");
+                    spawnForOthers.team = team;
                     await BroadcastExcept(JsonUtility.ToJson(spawnForOthers), sender);
 
-                    PlayerInfo pi = new PlayerInfo() { guid = guid, name = data.playerName, pos = Vector3.zero, rot = Vector3.zero };
-                    clientInfos[guid] = pi;
+                    clientInfos[guid] = new PlayerInfo() { guid = guid, name = data.playerName, pos = Vector3.zero, rot = Vector3.zero, team = team };
 
                     continue;
                 }
@@ -109,6 +117,19 @@ public class ServerUDP : MonoBehaviour
                 if (data != null)
                 {
                     string guid = clientIDs[sender];
+
+                    if (data.type == "changeTeam")
+                    {
+                        teamManager.ChangeTeam(guid, data.team);
+
+                        if (clientInfos.ContainsKey(guid))
+                            clientInfos[guid].team = data.team;
+
+                        Log($"Jugador {guid} cambió al equipo {data.team}");
+
+                        await Broadcast(JsonUtility.ToJson(data));
+                        continue;
+                    }
 
                     if (data.type == "update")
                     {
@@ -124,6 +145,7 @@ public class ServerUDP : MonoBehaviour
 
                         data.id = guid;
                         data.type = "update";
+                        data.team = clientInfos[guid].team;
                         string jsonUpdate = JsonUtility.ToJson(data);
                         await Broadcast(jsonUpdate);
                     }
@@ -137,6 +159,7 @@ public class ServerUDP : MonoBehaviour
 
                         clientInfos.Remove(guid);
                         clientIDs.Remove(sender);
+                        teamManager.RemovePlayer(guid);
                     }
                 }
                 else
