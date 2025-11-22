@@ -10,12 +10,12 @@ public class ClientPlayerUDP : MonoBehaviour
 {
     [Header("Player Settings")]
     public Transform playerTransform; 
-    public string playerName = "Player";
+    private string playerName = "Player";
     public GameObject remotePlayerPrefab;
     public GameObject localPlayerPrefab;
 
     [Header("Network Settings")]
-    public string serverIP = "127.0.0.1";
+    private string serverIP = "127.0.0.1";
     public int port = 5001;
     public float sendInterval = 0.20f;
 
@@ -30,6 +30,9 @@ public class ClientPlayerUDP : MonoBehaviour
 
     private async void Start()
     {
+        playerName = PlayerPrefs.GetString("playerName", "Player");
+        serverIP = PlayerPrefs.GetString("serverIP", "127.0.0.1");
+
         localToken = Guid.NewGuid().ToString();
         await ConnectToServer();
     }
