@@ -7,6 +7,7 @@ public class PistolProjectile : Projectile
     void OnTriggerEnter(Collider collision)
     {
         Destroy(gameObject);
+        //test
     }
 
     public float GetDamage() => damage;
