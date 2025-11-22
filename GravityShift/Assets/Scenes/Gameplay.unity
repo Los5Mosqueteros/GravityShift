@@ -3300,10 +3300,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   playerTransform: {fileID: 0}
-  playerName: Albert
   remotePlayerPrefab: {fileID: 160597388187147674, guid: 7a433bcea7013ae4fac2610e704c4c0b, type: 3}
   localPlayerPrefab: {fileID: 1773623360729482, guid: 11aaea5348574644a9eb4f4504fcce3f, type: 3}
-  serverIP: 127.0.0.1
   port: 5001
   sendInterval: 0.05
 --- !u!1 &1807221509

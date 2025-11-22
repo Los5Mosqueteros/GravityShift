@@ -159,6 +159,12 @@ public class ClientPlayerUDP : MonoBehaviour
         remote.transform.position = data.position;
         remote.transform.rotation = Quaternion.Euler(data.rotation);
 
+        PlayerNameTag nameTag = remote.GetComponentInChildren<PlayerNameTag>();
+        if(nameTag != null)
+        {
+            nameTag.SetName(data.playerName);
+        }
+
         remotePlayers.Add(data.id, remote);
 
         Debug.Log($"Spawn remoto: {data.id} ({data.playerName})");
@@ -206,7 +212,7 @@ public class ClientPlayerUDP : MonoBehaviour
                 byte[] data = Encoding.UTF8.GetBytes(json);
 
                 await udpClient.SendAsync(data, data.Length, serverEndPoint);
-                
+
                 await Task.Delay(100);
             }
         }
