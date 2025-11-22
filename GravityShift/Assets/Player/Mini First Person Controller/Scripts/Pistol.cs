@@ -16,6 +16,7 @@ public class Pistol : MonoBehaviour
     [SerializeField] private Animator animator;
     
     private Camera mainCamera;
+    private bool isReloading = false;
 
     void Start()
     {
@@ -25,11 +26,14 @@ public class Pistol : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetMouseButtonDown(0) && currentAmmo > 0)
+        if (Input.GetMouseButtonDown(0) && currentAmmo > 0 && !isReloading)
             animator.SetTrigger("Shoot");
         
-        if (Input.GetKeyDown(KeyCode.R) && currentAmmo < maxAmmo)
+        if (Input.GetKeyDown(KeyCode.R) && currentAmmo < maxAmmo && !isReloading)
+        {
+            isReloading = true;
             animator.SetTrigger("Reload");
+        }
     }
 
     public void Shoot()
@@ -52,6 +56,7 @@ public class Pistol : MonoBehaviour
     public void Reload()
     {
         currentAmmo = maxAmmo;
+        isReloading = false;
     }
 
     public int GetCurrentAmmo() => currentAmmo;
