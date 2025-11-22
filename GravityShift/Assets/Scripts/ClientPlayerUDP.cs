@@ -194,9 +194,19 @@ public class ClientPlayerUDP : MonoBehaviour
         {
             if (udpClient != null)
             {
-                string msg = playerName + " se ha desconectado.";
-                byte[] data = Encoding.UTF8.GetBytes(msg);
+                PlayerData disconnectData = new PlayerData(
+                    ID,
+                    playerName,
+                    Vector3.zero,
+                    Vector3.zero,
+                    "disconnect"
+                );
+
+                string json = JsonUtility.ToJson(disconnectData);
+                byte[] data = Encoding.UTF8.GetBytes(json);
+
                 await udpClient.SendAsync(data, data.Length, serverEndPoint);
+                
                 await Task.Delay(100);
             }
         }
