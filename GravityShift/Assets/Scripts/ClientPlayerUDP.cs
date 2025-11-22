@@ -17,7 +17,7 @@ public class ClientPlayerUDP : MonoBehaviour
     [Header("Network Settings")]
     private string serverIP = "127.0.0.1";
     public int port = 5001;
-    public float sendInterval = 0.20f;
+    public float sendInterval = 0.2f;
 
     private UdpClient udpClient;
     private IPEndPoint serverEndPoint;
@@ -170,8 +170,8 @@ public class ClientPlayerUDP : MonoBehaviour
 
         if (!remotePlayers.TryGetValue(data.id, out GameObject p)) return;
 
-        p.transform.position = data.position;
-        p.transform.rotation = Quaternion.Euler(data.rotation);
+        var remote = p.GetComponent<RemotePlayerController>();
+        if(remote != null) remote.SetTarget(data.position, data.rotation);
     }
 
     private void RemoveRemotePlayer(string id)
