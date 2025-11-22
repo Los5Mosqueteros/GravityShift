@@ -7,14 +7,13 @@ public class Rifle : MonoBehaviour
     private int currentAmmo;
 
     [Header("Shooting")]
-    [SerializeField] private float fireRate = 0.1f;
-    private float lastFireTime;
     [SerializeField] private float raycastDistance = 10f;
 
     [Header("Effects")]
     [SerializeField] private Transform muzzle;
     [SerializeField] private GameObject bulletPrefab;
     [SerializeField] private float bulletSpeed = 50f;
+    [SerializeField] private Animator animator;
     
     private Camera mainCamera;
 
@@ -26,64 +25,30 @@ public class Rifle : MonoBehaviour
 
     void Update()
     {
-        HandleShooting();
-        HandleReload();
+        animator.SetBool("IsShooting", Input.GetMouseButton(0) && currentAmmo > 0);
+        
+        if (Input.GetKeyDown(KeyCode.R) && currentAmmo < maxAmmo)
+            animator.SetTrigger("Reload");
     }
 
-    private void HandleShooting()
+    public void Shoot()
     {
-        if (Input.GetMouseButton(0) && Time.time >= lastFireTime + fireRate)
-        {
-            Shoot();
-            lastFireTime = Time.time;
-        }
-    }
-
-    private void HandleReload()
-    {
-        if (Input.GetKeyDown(KeyCode.R))
-            Reload();
-    }
-
-    private void Shoot()
-    {
-        if (currentAmmo <= 0)
-            return;
+        if (currentAmmo <= 0) return;
 
         currentAmmo--;
 
-        Vector3 spawnPos = muzzle != null ? muzzle.position : transform.position;
         Ray ray = mainCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0));
         Vector3 targetPoint = ray.origin + ray.direction * raycastDistance;
-        Vector3 shootDirection = (targetPoint - spawnPos).normalized;
+        Vector3 shootDirection = (targetPoint - muzzle.position).normalized;
         
-        //Debug.DrawLine(ray.origin, targetPoint, Color.red, 1f);
-        
-        GameObject bullet = Instantiate(bulletPrefab, spawnPos, Quaternion.identity);
-        bullet.transform.rotation = Quaternion.FromToRotation(Vector3.left, shootDirection);
-        
-        //Debug.DrawLine(spawnPos, spawnPos + shootDirection * raycastDistance, Color.green, 1f);
-        
+        GameObject bullet = Instantiate(bulletPrefab, muzzle.position, Quaternion.FromToRotation(Vector3.left, shootDirection));
         Projectile projectile = bullet.GetComponent<Projectile>();
         
-        if (projectile != null)
-        {
-            projectile.speed = bulletSpeed;
-            projectile.SetConvergenceData(targetPoint, ray.direction);
-        }
+        projectile.speed = bulletSpeed;
+        projectile.SetConvergenceData(targetPoint, ray.direction);
     }
 
-    private Vector3 GetShootDirection()
-    {
-        Ray ray = mainCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0));
-        Vector3 targetPoint = ray.origin + ray.direction * raycastDistance;
-        
-        Debug.DrawLine(ray.origin, targetPoint, Color.red, 0.1f);
-        
-        return (targetPoint - muzzle.position).normalized;
-    }
-
-    private void Reload()
+    public void Reload()
     {
         currentAmmo = maxAmmo;
     }
