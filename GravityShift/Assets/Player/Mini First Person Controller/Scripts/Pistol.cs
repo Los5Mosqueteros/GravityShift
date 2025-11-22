@@ -17,11 +17,13 @@ public class Pistol : MonoBehaviour
     
     private Camera mainCamera;
     private bool isReloading = false;
+    private WeaponHolder weaponHolder;
 
     void Start()
     {
         currentAmmo = maxAmmo;
         mainCamera = Camera.main;
+        weaponHolder = GetComponentInParent<WeaponHolder>();
     }
 
     void Update()
@@ -32,6 +34,7 @@ public class Pistol : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.R) && currentAmmo < maxAmmo && !isReloading)
         {
             isReloading = true;
+            weaponHolder.SetAiming(false);
             animator.SetTrigger("Reload");
         }
     }

@@ -3,16 +3,64 @@ using UnityEngine;
 public class WeaponHolder : MonoBehaviour
 {
     [SerializeField] private GameObject[] weapons;
+    [SerializeField] private Animator animator;
+    [SerializeField] private SwayNBobScript swayNBob;
+    
     private int currentWeaponIndex = 0;
+    private Vector3 defaultBobLimit;
+    private Vector3 defaultMultiplier;
+    private float defaultBobExaggeration;
 
     void Start()
     {
         ShowWeapon(0);
+        
+        if (swayNBob != null)
+        {
+            defaultBobLimit = swayNBob.bobLimit;
+            defaultMultiplier = swayNBob.multiplier;
+            defaultBobExaggeration = swayNBob.bobExaggeration;
+        }
     }
 
     void Update()
     {
         HandleWeaponSwitch();
+        HandleAiming();
+    }
+
+    private void HandleAiming()
+    {
+        bool isAiming = Input.GetMouseButton(1);
+        animator.SetBool("IsAimingRifle", isAiming && currentWeaponIndex == 0);
+        animator.SetBool("IsAimingPistol", isAiming && currentWeaponIndex == 1);
+        
+        UpdateSwayNBob(isAiming);
+    }
+
+    private void UpdateSwayNBob(bool isAiming)
+    {
+        if (swayNBob == null) return;
+        
+        if (isAiming)
+        {
+            swayNBob.bobExaggeration = 0f;
+            swayNBob.multiplier = Vector3.zero;
+            swayNBob.bobLimit = Vector3.one * 0.005f;
+        }
+        else
+        {
+            swayNBob.bobExaggeration = defaultBobExaggeration;
+            swayNBob.multiplier = defaultMultiplier;
+            swayNBob.bobLimit = defaultBobLimit;
+        }
+    }
+
+    public void SetAiming(bool value)
+    {
+        animator.SetBool("IsAimingRifle", value && currentWeaponIndex == 0);
+        animator.SetBool("IsAimingPistol", value && currentWeaponIndex == 1);
+        UpdateSwayNBob(value);
     }
 
     private void HandleWeaponSwitch()

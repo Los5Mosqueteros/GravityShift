@@ -160,11 +160,11 @@ MonoBehaviour:
   rotationStep: 4
   maxRotationStep: 5
   smooth: 10
-  speedCurve: 0
+  speedCurve: 7
   travelLimit: {x: 0.025, y: 0.025, z: 0.025}
   bobLimit: {x: 0.01, y: 0.01, z: 0.01}
-  bobExaggeration: 0
-  multiplier: {x: 0, y: 0, z: 0}
+  bobExaggeration: 3
+  multiplier: {x: 3, y: 3, z: 3}
 --- !u!1 &543987056926669757
 GameObject:
   m_ObjectHideFlags: 0
@@ -550,7 +550,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &3658402408726664056
 Transform:
   m_ObjectHideFlags: 0
@@ -1048,7 +1048,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1628437183697848590
 Transform:
   m_ObjectHideFlags: 0
@@ -2066,7 +2066,7 @@ Camera:
     y: 0
     width: 1
     height: 1
-  near clip plane: 0.3
+  near clip plane: 0.01
   far clip plane: 1000
   field of view: 60
   orthographic: 0
@@ -3156,6 +3156,7 @@ GameObject:
   m_Component:
   - component: {fileID: 64679366928295733}
   - component: {fileID: 5297745684163146242}
+  - component: {fileID: 2307729560093258310}
   m_Layer: 0
   m_Name: WeaponHolder
   m_TagString: Untagged
@@ -3172,7 +3173,7 @@ Transform:
   m_GameObject: {fileID: 7728181469162459474}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: 0.70710576, z: -0, w: 0.7071079}
-  m_LocalPosition: {x: 0.38937473, y: -0.46800005, z: 0.97135735}
+  m_LocalPosition: {x: 0, y: -0.188, z: 0.594}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -3197,6 +3198,30 @@ MonoBehaviour:
   - {fileID: 2332886380138627003}
   - {fileID: 6593493070695018543}
   - {fileID: 1139618588668497111}
+  animator: {fileID: 2307729560093258310}
+  swayNBob: {fileID: 2590643480727865284}
+--- !u!95 &2307729560093258310
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7728181469162459474}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: a7dc63541b5499c4c900146e9693d42e, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
 --- !u!1 &7985201658336902031
 GameObject:
   m_ObjectHideFlags: 0
