@@ -14,7 +14,7 @@ public class GroundCheck : MonoBehaviour
     public event System.Action Grounded;
 
     const float OriginOffset = .001f;
-    Vector3 RaycastOrigin => transform.position + Vector3.up * OriginOffset;
+    Vector3 RaycastOrigin => transform.position + transform.up * OriginOffset;
     float RaycastDistance => distanceThreshold + OriginOffset;
 
 

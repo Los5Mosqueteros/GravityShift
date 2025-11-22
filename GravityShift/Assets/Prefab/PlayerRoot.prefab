@@ -1258,7 +1258,8 @@ GameObject:
   - component: {fileID: 1825743824163475258}
   - component: {fileID: 5716138003262645547}
   - component: {fileID: 2930666865318220428}
-  m_Layer: 0
+  - component: {fileID: 7469598297571598103}
+  m_Layer: 6
   m_Name: First Person Controller
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1382,6 +1383,19 @@ MonoBehaviour:
   headToLower: {fileID: 1688487755451391609}
   crouchYHeadPosition: 1
   colliderToLower: {fileID: 7680923766261489988}
+--- !u!114 &7469598297571598103
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3176785935561002171}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0e96869c4e2f1340bf4673b3a7dc477, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  damageMultiplier: 1
 --- !u!1 &3198396164089710152
 GameObject:
   m_ObjectHideFlags: 0
@@ -2012,7 +2026,9 @@ GameObject:
   - component: {fileID: 666184009877748742}
   - component: {fileID: 28068546986873907}
   - component: {fileID: 2581966843677903770}
-  m_Layer: 0
+  - component: {fileID: 8820312497233136614}
+  - component: {fileID: 6395600226822022701}
+  m_Layer: 6
   m_Name: First Person Camera
   m_TagString: MainCamera
   m_Icon: {fileID: 0}
@@ -2177,6 +2193,40 @@ MonoBehaviour:
     m_MipBias: 0
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
+--- !u!135 &8820312497233136614
+SphereCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5163349907527741248}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 1
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Radius: 0.53
+  m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &6395600226822022701
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5163349907527741248}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0e96869c4e2f1340bf4673b3a7dc477, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  damageMultiplier: 3
 --- !u!1 &5945171109821777004
 GameObject:
   m_ObjectHideFlags: 0
