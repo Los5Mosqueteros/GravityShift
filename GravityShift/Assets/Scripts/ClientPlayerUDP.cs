@@ -137,7 +137,7 @@ public class ClientPlayerUDP : MonoBehaviour
             ID = data.id;
             Debug.Log($"Mi GUID asignado por el servidor: {ID}");
 
-            GameObject local = Instantiate(localPlayerPrefab);
+            GameObject local = Instantiate(localPlayerPrefab, data.position, Quaternion.Euler(data.rotation));
 
             playerTransform = local.GetComponentInChildren<FirstPersonMovement>().transform;
             playerRotation = local.transform;
@@ -184,7 +184,7 @@ public class ClientPlayerUDP : MonoBehaviour
         if (string.IsNullOrEmpty(data.id)) return;
         if (remotePlayers.ContainsKey(data.id)) return;
 
-        GameObject remote = Instantiate(remotePlayerPrefab);
+        GameObject remote = Instantiate(remotePlayerPrefab, data.position, Quaternion.Euler(data.rotation));
 
         var bundle = new RemotePlayerBundle();
         bundle.obj = remote;

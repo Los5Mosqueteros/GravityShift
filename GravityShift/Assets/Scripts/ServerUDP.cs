@@ -39,6 +39,8 @@ public class ServerUDP : MonoBehaviour
 
     private TeamManager teamManager = new TeamManager();
 
+    public SpawnManager spawnManager;
+
     private async void Start()
     {
         StartServer();
@@ -95,9 +97,15 @@ public class ServerUDP : MonoBehaviour
                     
                     Log($"Jugador {guid} asignado al equipo {team}");
 
-                    PlayerData spawnForSelf = new PlayerData(guid, data.playerName, Vector3.zero, Vector3.zero, "spawn");
+                    Vector3 spawnPos = spawnManager.GetSpawnPosition(team);
+                    PlayerData spawnForSelf = new PlayerData(guid, data.playerName, spawnPos, Vector3.zero, "spawn");
+                    spawnForSelf.team = team;
                     spawnForSelf.token = data.token;
                     await SendTo(sender, JsonUtility.ToJson(spawnForSelf));
+
+                    //PlayerData spawnForSelf = new PlayerData(guid, data.playerName, Vector3.zero, Vector3.zero, "spawn");
+                    //spawnForSelf.token = data.token;
+                    //await SendTo(sender, JsonUtility.ToJson(spawnForSelf));
 
                     foreach (var kv in clientInfos)
                     {
