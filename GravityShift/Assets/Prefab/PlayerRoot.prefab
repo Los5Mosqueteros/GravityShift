@@ -2422,6 +2422,7 @@ GameObject:
   - component: {fileID: 2581966843677903770}
   - component: {fileID: 8820312497233136614}
   - component: {fileID: 6395600226822022701}
+  - component: {fileID: 2340841363584951172}
   m_Layer: 6
   m_Name: First Person Camera
   m_TagString: MainCamera
@@ -2534,7 +2535,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 5163349907527741248}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 780f90e951d635f439326ea715cd97e9, type: 3}
   m_Name: 
@@ -2621,6 +2622,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   damageMultiplier: 3
+--- !u!114 &2340841363584951172
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5163349907527741248}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f50059924913f3c4cbb1d395bed8bbff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &5945171109821777004
 GameObject:
   m_ObjectHideFlags: 0
@@ -3746,6 +3759,9 @@ MonoBehaviour:
   - {fileID: 1139618588668497111}
   animator: {fileID: 2307729560093258310}
   swayNBob: {fileID: 2590643480727865284}
+  mainCamera: {fileID: 2279570196507153183}
+  aimFOV: 45
+  fovTransitionSpeed: 10
   currentWeaponIndex: 0
 --- !u!95 &2307729560093258310
 Animator:

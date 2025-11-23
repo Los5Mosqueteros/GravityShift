@@ -5,11 +5,15 @@ public class WeaponHolder : MonoBehaviour
     [SerializeField] private GameObject[] weapons;
     [SerializeField] private Animator animator;
     [SerializeField] private SwayNBobScript swayNBob;
+    [SerializeField] private Camera mainCamera;
+    [SerializeField] private float aimFOV = 50f;
+    [SerializeField] private float fovTransitionSpeed = 10f;
     
     public int currentWeaponIndex = 0;
     private Vector3 defaultBobLimit;
     private Vector3 defaultMultiplier;
     private float defaultBobExaggeration;
+    private float defaultFOV;
 
     public bool isAiming { get; private set; }
     public bool isShooting { get; private set; }
@@ -24,12 +28,18 @@ public class WeaponHolder : MonoBehaviour
             defaultMultiplier = swayNBob.multiplier;
             defaultBobExaggeration = swayNBob.bobExaggeration;
         }
+        
+        if (mainCamera == null)
+            mainCamera = Camera.main;
+        
+        defaultFOV = mainCamera.fieldOfView;
     }
 
     void Update()
     {
         HandleWeaponSwitch();
         HandleAiming();
+        UpdateFOV();
     }
 
     private void HandleAiming()
@@ -65,6 +75,12 @@ public class WeaponHolder : MonoBehaviour
         animator.SetBool("IsAimingRifle", value && currentWeaponIndex == 0);
         animator.SetBool("IsAimingPistol", value && currentWeaponIndex == 1);
         UpdateSwayNBob(value);
+    }
+
+    private void UpdateFOV()
+    {
+        float targetFOV = isAiming ? aimFOV : defaultFOV;
+        mainCamera.fieldOfView = Mathf.Lerp(mainCamera.fieldOfView, targetFOV, Time.deltaTime * fovTransitionSpeed);
     }
 
     private void HandleWeaponSwitch()

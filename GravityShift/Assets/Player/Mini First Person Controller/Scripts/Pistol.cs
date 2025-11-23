@@ -63,6 +63,8 @@ public class Pistol : MonoBehaviour
             audioSource.pitch = Random.Range(0.9f, 1.1f);
             audioSource.PlayOneShot(shootSounds[0]);
         }
+        
+        CameraShake.Instance?.Shake(0.1f, 0.06f);
 
         Ray ray = mainCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0));
         Vector3 targetPoint = ray.origin + ray.direction * raycastDistance;
