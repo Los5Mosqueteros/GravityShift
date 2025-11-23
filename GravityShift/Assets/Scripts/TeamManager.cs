@@ -4,7 +4,7 @@ using UnityEngine;
 public class TeamManager
 {
     private const int maxTeams = 4;
-    private const int maxPlayersPerTeam = 3;
+    private const int maxPlayersPerTeam = 1;
 
     private Dictionary<string, int> playerTeams = new Dictionary<string, int>();
 
@@ -24,11 +24,8 @@ public class TeamManager
 
     public bool ChangeTeam(string playerId, int newTeam)
     {
-        if (newTeam < 1 || newTeam > maxTeams) return false;
-
-        if (GetTeamCount(newTeam) >= maxPlayersPerTeam) return false;
-
-        playerTeams[playerId] = newTeam;
+        if (newTeam < 1 || newTeam > maxTeams) return false; 
+        playerTeams[playerId] = newTeam; 
         return true;
     }
 
@@ -59,4 +56,5 @@ public class TeamManager
     {
         return playerTeams.ContainsKey(playerId);
     }
+
 }

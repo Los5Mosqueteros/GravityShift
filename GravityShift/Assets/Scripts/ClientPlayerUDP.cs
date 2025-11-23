@@ -161,6 +161,18 @@ public class ClientPlayerUDP : MonoBehaviour
                 UpdateRemotePlayer(data);
                 break;
 
+            case "changeTeam":
+                if (remotePlayers.TryGetValue(data.id, out var bundle))
+                {
+                    bundle.controller?.SetTarget(data.position, data.rotation);
+
+                    PlayerAppearance appearance = bundle.obj.GetComponentInChildren<PlayerAppearance>();
+                    if (appearance != null)
+                    {
+                        appearance.SetTeamColor(data.team);
+                    }
+                }
+                break;
             case "disconnect":
                 RemoveRemotePlayer(data.id);
                 break;
@@ -184,6 +196,13 @@ public class ClientPlayerUDP : MonoBehaviour
         {
             nameTag.SetName(data.playerName);
         }
+
+        PlayerAppearance appearance = remote.GetComponentInChildren<PlayerAppearance>();
+        if (appearance != null)
+        {
+            appearance.SetTeamColor(data.team);
+        }
+
 
         remotePlayers.Add(data.id, bundle);
 
@@ -211,6 +230,26 @@ public class ClientPlayerUDP : MonoBehaviour
 
             remotePlayers.Remove(id);
             Debug.Log($"Jugador remoto {id} desconectado y destruido.");
+        }
+    }
+
+    public async void RequestTeamChange(int newTeam)
+    {
+        if (ID == null) return;
+
+        PlayerData change = new PlayerData(ID, playerName, Vector3.zero, Vector3.zero, "changeTeam");
+        change.team = newTeam;
+
+        string json = JsonUtility.ToJson(change);
+        byte[] bytes = Encoding.UTF8.GetBytes(json);
+
+        try
+        {
+            await udpClient.SendAsync(bytes, bytes.Length, serverEndPoint);
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning("Error enviando solicitud de cambio de equipo: " + e.Message);
         }
     }
 

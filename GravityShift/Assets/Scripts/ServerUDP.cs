@@ -91,7 +91,8 @@ public class ServerUDP : MonoBehaviour
 
                     Log($"Nuevo cliente conectado desde {sender.Address}:{sender.Port} -> GUID {guid}");
 
-                    int team = teamManager.AssignTeam(guid);
+                    int team = teamManager.AssignTeam(guid);                  
+                    
                     Log($"Jugador {guid} asignado al equipo {team}");
 
                     PlayerData spawnForSelf = new PlayerData(guid, data.playerName, Vector3.zero, Vector3.zero, "spawn");
@@ -102,6 +103,7 @@ public class ServerUDP : MonoBehaviour
                     {
                         var info = kv.Value;
                         PlayerData existing = new PlayerData(info.guid, info.name, info.pos, info.rot, "spawn");
+                        existing.team = info.team;
                         await SendTo(sender, JsonUtility.ToJson(existing));
                     }
 
@@ -120,15 +122,12 @@ public class ServerUDP : MonoBehaviour
 
                     if (data.type == "changeTeam")
                     {
-                        teamManager.ChangeTeam(guid, data.team);
-
-                        if (clientInfos.ContainsKey(guid))
-                            clientInfos[guid].team = data.team;
-
-                        Log($"Jugador {guid} cambió al equipo {data.team}");
-
+                        teamManager.ChangeTeam(guid, data.team); 
+                        clientInfos[guid].team = data.team;
+                  
+                        data.id = guid; 
                         await Broadcast(JsonUtility.ToJson(data));
-                        continue;
+                        Log($"Jugador {guid} cambió al equipo {data.team}");
                     }
 
                     if (data.type == "update")
