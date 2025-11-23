@@ -6,6 +6,13 @@ using System.Threading.Tasks;
 using System;
 using System.Collections.Generic;
 
+public class RemotePlayerBundle
+{
+    public GameObject obj;
+    public RemotePlayerController controller;
+    public RemoteWeaponSystem weaponSystem;
+}
+
 public class ClientPlayerUDP : MonoBehaviour
 {
     [Header("Player Settings")]
@@ -14,6 +21,7 @@ public class ClientPlayerUDP : MonoBehaviour
     private string playerName = "Player";
     public GameObject remotePlayerPrefab;
     public GameObject localPlayerPrefab;
+    private WeaponHolder localWeaponSystem;
 
     [Header("Network Settings")]
     private string serverIP = "127.0.0.1";
@@ -27,7 +35,7 @@ public class ClientPlayerUDP : MonoBehaviour
     private string localToken;
     private string ID = null;
 
-    private Dictionary<string, GameObject> remotePlayers = new Dictionary<string, GameObject>();
+    private Dictionary<string, RemotePlayerBundle> remotePlayers = new();
 
     private async void Start()
     {
@@ -76,6 +84,11 @@ public class ClientPlayerUDP : MonoBehaviour
                     playerRotation.rotation.eulerAngles, 
                     "update"
                 );
+
+                data.weaponIndex = localWeaponSystem.currentWeaponIndex;
+                data.aiming = localWeaponSystem.isAiming;
+                data.shooting = localWeaponSystem.isShooting;
+
                 string json = JsonUtility.ToJson(data);
                 byte[] bytes = Encoding.UTF8.GetBytes(json);
 
@@ -125,8 +138,11 @@ public class ClientPlayerUDP : MonoBehaviour
             Debug.Log($"Mi GUID asignado por el servidor: {ID}");
 
             GameObject local = Instantiate(localPlayerPrefab);
+
             playerTransform = local.GetComponentInChildren<FirstPersonMovement>().transform;
             playerRotation = local.transform;
+
+            localWeaponSystem = local.GetComponentInChildren<WeaponHolder>();
 
             _ = SendPlayerDataLoop();
 
@@ -157,9 +173,11 @@ public class ClientPlayerUDP : MonoBehaviour
         if (remotePlayers.ContainsKey(data.id)) return;
 
         GameObject remote = Instantiate(remotePlayerPrefab);
-        remote.name = "Player_" + data.id;
-        remote.transform.position = data.position;
-        remote.transform.rotation = Quaternion.Euler(data.rotation);
+
+        var bundle = new RemotePlayerBundle();
+        bundle.obj = remote;
+        bundle.controller = remote.GetComponent<RemotePlayerController>();
+        bundle.weaponSystem = remote.GetComponent<RemoteWeaponSystem>();
 
         PlayerNameTag nameTag = remote.GetComponentInChildren<PlayerNameTag>();
         if(nameTag != null)
@@ -167,7 +185,7 @@ public class ClientPlayerUDP : MonoBehaviour
             nameTag.SetName(data.playerName);
         }
 
-        remotePlayers.Add(data.id, remote);
+        remotePlayers.Add(data.id, bundle);
 
         Debug.Log($"Spawn remoto: {data.id} ({data.playerName})");
     }
@@ -175,20 +193,22 @@ public class ClientPlayerUDP : MonoBehaviour
     private void UpdateRemotePlayer(PlayerData data)
     {
         if (string.IsNullOrEmpty(data.id)) return;
+        if (!remotePlayers.TryGetValue(data.id, out var bundle)) return;
 
-        if (!remotePlayers.TryGetValue(data.id, out GameObject p)) return;
-
-        var remote = p.GetComponent<RemotePlayerController>();
-        if(remote != null) remote.SetTarget(data.position, data.rotation);
+        bundle.controller?.SetTarget(data.position, data.rotation);
+        bundle.weaponSystem?.SetWeapon(data.weaponIndex);
+        bundle.weaponSystem?.SetAiming(data.aiming);
+        bundle.weaponSystem?.SetShooting(data.shooting);
     }
 
     private void RemoveRemotePlayer(string id)
     {
         if (string.IsNullOrEmpty(id)) return;
-
-        if (remotePlayers.TryGetValue(id, out GameObject p))
+        if (remotePlayers.TryGetValue(id, out RemotePlayerBundle bundle))
         {
-            Destroy(p);
+            if (bundle.obj != null)
+                Destroy(bundle.obj);
+
             remotePlayers.Remove(id);
             Debug.Log($"Jugador remoto {id} desconectado y destruido.");
         }

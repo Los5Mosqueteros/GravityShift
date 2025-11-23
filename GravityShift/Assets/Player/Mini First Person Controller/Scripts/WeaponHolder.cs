@@ -6,10 +6,13 @@ public class WeaponHolder : MonoBehaviour
     [SerializeField] private Animator animator;
     [SerializeField] private SwayNBobScript swayNBob;
     
-    private int currentWeaponIndex = 0;
+    public int currentWeaponIndex = 0;
     private Vector3 defaultBobLimit;
     private Vector3 defaultMultiplier;
     private float defaultBobExaggeration;
+
+    public bool isAiming { get; private set; }
+    public bool isShooting { get; private set; }
 
     void Start()
     {
@@ -31,7 +34,8 @@ public class WeaponHolder : MonoBehaviour
 
     private void HandleAiming()
     {
-        bool isAiming = Input.GetMouseButton(1);
+        isAiming = Input.GetMouseButton(1);
+        
         animator.SetBool("IsAimingRifle", isAiming && currentWeaponIndex == 0);
         animator.SetBool("IsAimingPistol", isAiming && currentWeaponIndex == 1);
         

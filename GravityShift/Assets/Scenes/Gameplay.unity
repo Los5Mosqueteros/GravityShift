@@ -4307,8 +4307,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   playerTransform: {fileID: 673150997210537191, guid: a1b7ef9b9f87acb4da3175f7a2f3d40a, type: 3}
+  playerRotation: {fileID: 0}
   remotePlayerPrefab: {fileID: 160597388187147674, guid: 7a433bcea7013ae4fac2610e704c4c0b, type: 3}
   localPlayerPrefab: {fileID: 3477191690242087164, guid: a1b7ef9b9f87acb4da3175f7a2f3d40a, type: 3}
+  localWeaponSystem: {fileID: 0}
   port: 5001
   sendInterval: 0.05
 --- !u!1 &1807221509
