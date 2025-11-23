@@ -14,6 +14,9 @@ public class Pistol : MonoBehaviour
     [SerializeField] private GameObject bulletPrefab;
     [SerializeField] private float bulletSpeed = 60f;
     [SerializeField] private Animator animator;
+    [SerializeField] private AudioSource audioSource;
+    [SerializeField] private AudioClip[] shootSounds;
+    [SerializeField] private AudioClip reloadSound;
     
     private Camera mainCamera;
     private bool isReloading = false;
@@ -24,6 +27,16 @@ public class Pistol : MonoBehaviour
         currentAmmo = maxAmmo;
         mainCamera = Camera.main;
         weaponHolder = GetComponentInParent<WeaponHolder>();
+    }
+
+    void OnDisable()
+    {
+        if (isReloading)
+        {
+            isReloading = false;
+            animator.ResetTrigger("Reload");
+        }
+        animator.ResetTrigger("Shoot");
     }
 
     void Update()
@@ -44,6 +57,12 @@ public class Pistol : MonoBehaviour
         if (currentAmmo <= 0) return;
 
         currentAmmo--;
+        
+        if (audioSource != null && shootSounds.Length > 0)
+        {
+            audioSource.pitch = Random.Range(0.9f, 1.1f);
+            audioSource.PlayOneShot(shootSounds[0]);
+        }
 
         Ray ray = mainCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0));
         Vector3 targetPoint = ray.origin + ray.direction * raycastDistance;
@@ -60,6 +79,15 @@ public class Pistol : MonoBehaviour
     {
         currentAmmo = maxAmmo;
         isReloading = false;
+    }
+
+    public void PlayReloadSound()
+    {
+        if (audioSource != null && reloadSound != null)
+        {
+            audioSource.pitch = 1f;
+            audioSource.PlayOneShot(reloadSound);
+        }
     }
 
     public int GetCurrentAmmo() => currentAmmo;
