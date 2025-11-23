@@ -167,8 +167,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3764399860895989469}
-  - component: {fileID: 5807431930585224470}
-  - component: {fileID: 396751421946431467}
   m_Layer: 0
   m_Name: Rifle
   m_TagString: Untagged
@@ -199,46 +197,6 @@ Transform:
   - {fileID: 6596703189790501873}
   m_Father: {fileID: 5198372333126302163}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &5807431930585224470
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 786407007323682656}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a7796b2127a8be846a85bccb9c36e1d2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  maxAmmo: 30
-  raycastDistance: 10
-  muzzle: {fileID: 7972646698296628494}
-  bulletPrefab: {fileID: 5341742223406746680, guid: 9c3cddd6060b7cc4eadfb9cefcf6e7db, type: 3}
-  bulletSpeed: 50
-  animator: {fileID: 396751421946431467}
---- !u!95 &396751421946431467
-Animator:
-  serializedVersion: 7
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 786407007323682656}
-  m_Enabled: 1
-  m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 9100000, guid: f7754a6e1693e9846b21dc766c782f3f, type: 2}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_StabilizeFeet: 0
-  m_AnimatePhysics: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorStateOnDisable: 0
-  m_WriteDefaultValuesOnDisable: 0
 --- !u!1 &1200559129316805992
 GameObject:
   m_ObjectHideFlags: 0

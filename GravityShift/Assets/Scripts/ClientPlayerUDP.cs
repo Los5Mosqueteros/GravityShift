@@ -9,7 +9,8 @@ using System.Collections.Generic;
 public class ClientPlayerUDP : MonoBehaviour
 {
     [Header("Player Settings")]
-    public Transform playerTransform; 
+    public Transform playerTransform;
+    public Transform playerRotation;
     private string playerName = "Player";
     public GameObject remotePlayerPrefab;
     public GameObject localPlayerPrefab;
@@ -72,7 +73,7 @@ public class ClientPlayerUDP : MonoBehaviour
                     ID, 
                     playerName, 
                     playerTransform.position, 
-                    playerTransform.rotation.eulerAngles, 
+                    playerRotation.rotation.eulerAngles, 
                     "update"
                 );
                 string json = JsonUtility.ToJson(data);
@@ -124,7 +125,8 @@ public class ClientPlayerUDP : MonoBehaviour
             Debug.Log($"Mi GUID asignado por el servidor: {ID}");
 
             GameObject local = Instantiate(localPlayerPrefab);
-            playerTransform = local.transform;
+            playerTransform = local.GetComponentInChildren<FirstPersonMovement>().transform;
+            playerRotation = local.transform;
 
             _ = SendPlayerDataLoop();
 
