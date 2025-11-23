@@ -31,7 +31,11 @@ public class GravityShifter : MonoBehaviour
     {
         if (rotating) return; // evita flip mientras rota
 
-        timer -= Time.deltaTime;
+        //timer -= Time.deltaTime;
+        if (Input.GetKeyDown(KeyCode.F))
+        {
+            StartCoroutine(FlipRoutine());
+        }
 
         if (timer <= 0f)
         {
