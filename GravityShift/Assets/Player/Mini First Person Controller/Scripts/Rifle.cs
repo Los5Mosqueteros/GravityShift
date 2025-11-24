@@ -69,6 +69,7 @@ public class Rifle : MonoBehaviour
         Vector3 targetPoint = ray.origin + ray.direction * raycastDistance;
         Vector3 shootDirection = (targetPoint - muzzle.position).normalized;
         
+        // Tienes que usar el projectile manager, que para algo lo tienes, sino no se puede enviar la informacion de la bala a los demas
         GameObject bullet = Instantiate(bulletPrefab, muzzle.position, Quaternion.FromToRotation(Vector3.left, shootDirection));
         Projectile projectile = bullet.GetComponent<Projectile>();
         

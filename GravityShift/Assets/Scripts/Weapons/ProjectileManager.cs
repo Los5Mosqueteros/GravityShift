@@ -1,4 +1,6 @@
 using System;
+using System.Net.Sockets;
+using System.Text;
 using UnityEngine;
 
 public class ProjectileManager : MonoBehaviour
@@ -12,47 +14,32 @@ public class ProjectileManager : MonoBehaviour
 
     public Action<string> OnProjectileSpawnSerialized;
 
-    [Serializable]
-    private class ProjectileMessage
-    {
-        public string type = "spawn_projectile";
-        public Vector3 position;
-        public Vector3 direction;
-        public float speed;
-        public float lifetime;
-    }
-
     // Llamar esto cuando se dispare una bala de forma local
-    public void SpawnProjectile(Vector3 position, Vector3 direction)
+    public void SpawnProjectile(int weaponIndex, Vector3 position, Vector3 direction)
     {
+        ProjectileData proj = new ProjectileData(
+            weaponIndex,
+            position,
+            direction,
+            defaultSpeed,
+            defaultLifetime
+        );
 
-        SpawnLocal(position, direction, defaultSpeed, defaultLifetime);
-
-        ProjectileMessage msg = new ProjectileMessage
-        {
-            position = position,
-            direction = direction,
-            speed = defaultSpeed,
-            lifetime = defaultLifetime
-        };
-
-        string json = JsonUtility.ToJson(msg);
+        string json = JsonUtility.ToJson(proj);
 
         OnProjectileSpawnSerialized?.Invoke(json);
     }
 
-    // Llamar esta función cuando se reciba un paquete
-    public void HandleNetworkMessage(string json)
+    //Llamar esta funciï¿½n cuando se reciba un paquete
+    public void HandleNetworkMessage(ProjectileData data)
     {
-        ProjectileMessage msg = JsonUtility.FromJson<ProjectileMessage>(json);
-
-        if (msg.type == "spawn_projectile")
+        if (data.type == "projectile")
         {
-            SpawnLocal(msg.position, msg.direction, msg.speed, msg.lifetime);
+            SpawnLocal(data.position, data.direction, data.speed, data.lifetime);
         }
     }
 
-    private void SpawnLocal(Vector3 position, Vector3 direction, float speed, float lifetime)
+    public void SpawnLocal(Vector3 position, Vector3 direction, float speed, float lifetime)
     {
         GameObject proj = Instantiate(projectilePrefab, position, Quaternion.LookRotation(direction));
         Projectile projectile = proj.GetComponent<Projectile>();

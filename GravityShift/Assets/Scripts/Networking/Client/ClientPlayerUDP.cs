@@ -28,6 +28,9 @@ public class ClientPlayerUDP : MonoBehaviour
     public int port = 5001;
     public float sendInterval = 0.2f;
 
+    [SerializeField]
+    private ProjectileManager projectileManager;
+
     private UdpClient udpClient;
     private IPEndPoint serverEndPoint;
     private bool isRunning = false;
@@ -37,6 +40,12 @@ public class ClientPlayerUDP : MonoBehaviour
 
     private Dictionary<string, RemotePlayerBundle> remotePlayers = new();
 
+    [Serializable]
+    public class BaseMessage
+    {
+        public string type;
+    }
+
     private async void Start()
     {
         playerName = PlayerPrefs.GetString("playerName", "Player");
@@ -44,6 +53,8 @@ public class ClientPlayerUDP : MonoBehaviour
 
         localToken = Guid.NewGuid().ToString();
         await ConnectToServer();
+
+        projectileManager.OnProjectileSpawnSerialized += SendProjectileData;
     }
 
     private async Task ConnectToServer()
@@ -107,6 +118,22 @@ public class ClientPlayerUDP : MonoBehaviour
         }
     }
 
+    private async void SendProjectileData(string json)
+    {
+        if(!isRunning) return;
+
+        byte[] bytes = Encoding.UTF8.GetBytes(json);
+
+        try
+        {
+            await udpClient.SendAsync(bytes, bytes.Length, serverEndPoint);
+        }
+        catch(Exception e)
+        {
+            Debug.LogWarning("Error enviando proyectil: " + e.Message);
+        }
+    }
+
     private async Task ReceiveMessages()
     {
         while (isRunning)
@@ -115,20 +142,39 @@ public class ClientPlayerUDP : MonoBehaviour
             {
                 UdpReceiveResult result = await udpClient.ReceiveAsync();
                 string msg = Encoding.UTF8.GetString(result.Buffer);
-                //Debug.Log("Servidor: " + msg);
 
-                PlayerData data = JsonUtility.FromJson<PlayerData>(msg);
-                HandleMessage(data);
+                BaseMessage baseMsg = JsonUtility.FromJson<BaseMessage>(msg);
+
+                if(baseMsg == null || string.IsNullOrEmpty(baseMsg.type)) continue;
+
+                switch (baseMsg.type)
+                {
+                    case "spawn":
+                    case "update":
+                    case "disconnect":
+                    case "changeTeam":
+                        PlayerData player = JsonUtility.FromJson<PlayerData>(msg);
+                        HandlePlayerMessage(player);
+                        break;
+
+                    case "projectile":
+                        ProjectileData proj = JsonUtility.FromJson<ProjectileData>(msg);
+                        HandleProjectileMessage(proj);
+                        break;
+
+                    default:
+                        Debug.LogWarning("Mensaje desconocido: " + baseMsg.type);
+                        break;
+                }
             }
-            catch
+            catch(Exception e)
             {
-                isRunning = false;
-                Debug.Log("Desconectado del servidor UDP.");
+                Debug.Log("Error: " + e.Message);
             }
         }
     }
 
-    private void HandleMessage(PlayerData data)
+    private void HandlePlayerMessage(PlayerData data)
     {
         if (data == null) return;
 
@@ -173,10 +219,18 @@ public class ClientPlayerUDP : MonoBehaviour
                     }
                 }
                 break;
+
             case "disconnect":
                 RemoveRemotePlayer(data.id);
                 break;
         }
+    }
+
+    private void HandleProjectileMessage(ProjectileData data)
+    {
+        if (data == null) return;
+
+        projectileManager.HandleNetworkMessage(data);
     }
 
     private void SpawnRemotePlayer(PlayerData data)
