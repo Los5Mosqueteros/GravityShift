@@ -4,6 +4,7 @@ using TMPro;
 public class PlayerNameTag : MonoBehaviour
 {
     public TextMeshPro nameText;
+    public Vector3 offset = new Vector3(0, 2, 0);
 
     public void SetName(string playerName)
     {
@@ -17,7 +18,9 @@ public class PlayerNameTag : MonoBehaviour
     {
         if(Camera.main != null)
         {
-            transform.rotation = Quaternion.LookRotation(transform.position - Camera.main.transform.position);
+            transform.position = Camera.main.transform.position;
+            transform.rotation = Quaternion.identity;
+            //transform.rotation = Quaternion.LookRotation(transform.position - Camera.main.transform.position);
         }
     }
 }
