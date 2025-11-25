@@ -5,6 +5,8 @@ using UnityEngine;
 
 public class ProjectileManager : MonoBehaviour
 {
+    public static ProjectileManager Instance;
+
     [Header("Projectile Setup")]
     public GameObject projectilePrefab;
 
@@ -13,6 +15,18 @@ public class ProjectileManager : MonoBehaviour
     public float defaultLifetime = 3f;
 
     public Action<string> OnProjectileSpawnSerialized;
+
+    private void Awake()
+    {
+        if(Instance == null)
+        {
+            Instance = this;
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+    }
 
     // Llamar esto cuando se dispare una bala de forma local
     public void SpawnProjectile(int weaponIndex, Vector3 position, Vector3 direction)

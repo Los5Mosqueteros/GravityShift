@@ -28,9 +28,6 @@ public class ClientPlayerUDP : MonoBehaviour
     public int port = 5001;
     public float sendInterval = 0.2f;
 
-    [SerializeField]
-    private ProjectileManager projectileManager;
-
     private UdpClient udpClient;
     private IPEndPoint serverEndPoint;
     private bool isRunning = false;
@@ -230,7 +227,7 @@ public class ClientPlayerUDP : MonoBehaviour
     {
         if (data == null) return;
 
-        projectileManager.HandleNetworkMessage(data);
+        ProjectileManager.Instance.HandleNetworkMessage(data);
     }
 
     private void SpawnRemotePlayer(PlayerData data)

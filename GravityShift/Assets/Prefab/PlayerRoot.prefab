@@ -1936,6 +1936,7 @@ GameObject:
   m_Component:
   - component: {fileID: 673150997210537191}
   - component: {fileID: 5705734439648026655}
+  - component: {fileID: 2438848551507915981}
   m_Layer: 0
   m_Name: PlayerRoot
   m_TagString: Untagged
@@ -1978,6 +1979,21 @@ MonoBehaviour:
   gravityStrength: 9.81
   rotationDuration: 0.6
   timeBeforeRotation: 1
+--- !u!114 &2438848551507915981
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3477191690242087164}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 880d5ac950c9e1e4aaaabb32b682b613, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  projectilePrefab: {fileID: 5341742223406746680, guid: 9c3cddd6060b7cc4eadfb9cefcf6e7db, type: 3}
+  defaultSpeed: 20
+  defaultLifetime: 3
 --- !u!1 &3758347430948650230
 GameObject:
   m_ObjectHideFlags: 0
