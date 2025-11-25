@@ -51,7 +51,7 @@ public class ClientPlayerUDP : MonoBehaviour
         localToken = Guid.NewGuid().ToString();
         await ConnectToServer();
 
-        projectileManager.OnProjectileSpawnSerialized += SendProjectileData;
+        ProjectileManager.Instance.OnProjectileSpawnSerialized += SendProjectileData;
     }
 
     private async Task ConnectToServer()
