@@ -31,12 +31,15 @@ public class Client : Networking
     private EndPoint serverEndPoint;
 
     public GameObject localPlayerPrefab;
+    public GameObject remotePlayerPrefab;
     private GameObject localPlayer;
     private string GUID;
     private Transform localTransform;
     private Transform localRotation;
 
     public float sendRate = 0.2f;
+
+    private Dictionary<string, GameObject> remotePlayers = new();
 
     private readonly Queue<Action> mainThreadQueue = new Queue<Action>();
 
@@ -47,7 +50,7 @@ public class Client : Networking
 
         socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
         socket.Bind(new IPEndPoint(IPAddress.Any, 0));
-        
+
         serverEndPoint = new IPEndPoint(IPAddress.Parse(serverIP), port);
 
         Debug.Log("[CLIENT][NET] Conectando a servidor " + serverEndPoint);
@@ -94,8 +97,6 @@ public class Client : Networking
 
     protected override void OnPacketReceived(string msg, EndPoint fromAddress)
     {
-        Debug.Log("[CLIENT][NET] Mensaje recibido: " + msg);
-
         if (msg.StartsWith("PLAYER_JOIN_APPROVED|"))
         {
             string json = msg.Substring("PLAYER_JOIN_APPROVED|".Length);
@@ -106,17 +107,40 @@ public class Client : Networking
             mainThreadQueue.Enqueue(() => HandleServerJoinApproval(proxy));
             return;
         }
+
+        if (msg.StartsWith("SPAWN_PLAYER|"))
+        {
+            string json = msg.Substring("SPAWN_PLAYER|".Length);
+            ClientProxy proxy = JsonUtility.FromJson<ClientProxy>(json);
+
+            mainThreadQueue.Enqueue(() => SpawnRemotePlayer(proxy));
+            return;
+        }
+
+        if (msg.StartsWith("EXISTING_PLAYER|"))
+        {
+            string json = msg.Substring("EXISTING_PLAYER|".Length);
+            ClientProxy proxy = JsonUtility.FromJson<ClientProxy>(json);
+
+            mainThreadQueue.Enqueue(() => SpawnRemotePlayer(proxy));
+            return;
+        }
+
+        if (msg.StartsWith("PLAYER_UPDATE|"))
+        {
+            string json = msg.Substring("PLAYER_UPDATE|".Length);
+            PlayerUpdate update = JsonUtility.FromJson<PlayerUpdate>(json);
+
+            mainThreadQueue.Enqueue(() => ApplyRemotePlayerUpdate(update));
+            return;
+        }
     }
 
     private void HandleServerJoinApproval(ClientProxy proxy)
     {
         GUID = proxy.guid;
 
-        localPlayer = Instantiate(
-            localPlayerPrefab,
-            proxy.position,
-            Quaternion.Euler(proxy.rotation)
-        );
+        localPlayer = Instantiate(localPlayerPrefab, proxy.position, Quaternion.Euler(proxy.rotation));
 
         localTransform = localPlayer.transform;
         localRotation = localPlayer.transform;
@@ -124,6 +148,25 @@ public class Client : Networking
         Debug.Log("[CLIENT] Player local instanciado en " + proxy.position);
 
         BeginStateSyncLoop();
+    }
+
+    private void SpawnRemotePlayer(ClientProxy proxy)
+    {
+        if (remotePlayers.ContainsKey(proxy.guid)) return;
+
+        GameObject obj = Instantiate(remotePlayerPrefab, proxy.position, Quaternion.Euler(proxy.rotation));
+        remotePlayers.Add(proxy.guid, obj);
+
+        Debug.Log("[CLIENT] Remote player creado: " + proxy.guid);
+    }
+
+    private void ApplyRemotePlayerUpdate(PlayerUpdate update)
+    {
+        if (remotePlayers.TryGetValue(update.guid, out GameObject obj))
+        {
+            obj.transform.position = update.position;
+            obj.transform.rotation = Quaternion.Euler(update.rotation);
+        }
     }
 
     private async void BeginStateSyncLoop()

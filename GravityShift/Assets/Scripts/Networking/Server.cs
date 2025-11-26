@@ -75,9 +75,31 @@ public class Server : Networking
                 proxy.position = update.position;
                 proxy.rotation = update.rotation;
                 clients[fromAddress] = proxy;
+
+                BroadcastPlayerUpdate(proxy);
             }
 
             return;
+        }
+    }
+
+    private void BroadcastPlayerUpdate(ClientProxy proxy)
+    {
+        PlayerUpdate update = new PlayerUpdate();
+        update.type = "update";
+        update.guid = proxy.guid;
+        update.position = proxy.position;
+        update.rotation = proxy.rotation;
+
+        string json = JsonUtility.ToJson(update);
+        byte[] packet = Encoding.UTF8.GetBytes("PLAYER_UPDATE|" + json);
+
+        foreach (var kv in clients)
+        {
+            if (!kv.Key.ToString().Equals(proxy.address.ToString()))
+            {
+                SendPacket(packet, kv.Key);
+            }
         }
     }
 
@@ -98,8 +120,36 @@ public class Server : Networking
         clients[address] = proxy;
 
         SendJoinApprovalPacket(proxy);
+        SendExistingPlayers(proxy);
+        BroadcastNewPlayer(proxy);
     }
 
+    private void BroadcastNewPlayer(ClientProxy newPlayer)
+    {
+        string json = JsonUtility.ToJson(newPlayer);
+        byte[] packet = Encoding.UTF8.GetBytes("SPAWN_PLAYER|" + json);
+
+        foreach (var kv in clients)
+        {
+            if (!kv.Key.Equals(newPlayer.address))
+            {
+                SendPacket(packet, kv.Key);
+            }
+        }
+    }
+
+    private void SendExistingPlayers(ClientProxy newPlayer)
+    {
+        foreach (var kv in clients)
+        {
+            if (!kv.Key.Equals(newPlayer.address))
+            {
+                string json = JsonUtility.ToJson(kv.Value);
+                byte[] packet = Encoding.UTF8.GetBytes("EXISTING_PLAYER|" + json);
+                SendPacket(packet, newPlayer.address);
+            }
+        }
+    }
 
     private void SendJoinApprovalPacket(ClientProxy proxy)
     {
