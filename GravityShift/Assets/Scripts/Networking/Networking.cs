@@ -11,7 +11,7 @@ public abstract class Networking : MonoBehaviour
 
     protected virtual void Start() { }
 
-    protected virtual void OnPacketReceived(byte[] inputPacket, EndPoint fromAddress) { }
+    protected virtual void OnPacketReceived(string msg, EndPoint fromAddress) { }
     protected virtual void OnConnectionReset(EndPoint fromAddress) { }
     protected virtual void OnDisconnect() { }
     protected virtual void OnUpdate() { }

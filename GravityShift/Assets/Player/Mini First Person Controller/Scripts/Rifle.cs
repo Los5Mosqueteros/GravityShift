@@ -72,7 +72,6 @@ public class Rifle : MonoBehaviour
         // Tienes que usar el projectile manager, que para algo lo tienes, sino no se puede enviar la informacion de la bala a los demas
         GameObject bullet = Instantiate(bulletPrefab, muzzle.position, Quaternion.FromToRotation(Vector3.left, shootDirection));
         Projectile projectile = bullet.GetComponent<Projectile>();
-        ProjectileManager.Instance.SpawnProjectile(1, muzzle.position, shootDirection);
 
 
         projectile.speed = bulletSpeed;

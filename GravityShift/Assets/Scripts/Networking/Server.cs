@@ -46,29 +46,42 @@ public class Server : Networking
         ReceiveState state = (ReceiveState)ar.AsyncState;
         EndPoint from = state.sender;
 
-        socket.EndReceiveFrom(ar, ref from);
+        int bytes = socket.EndReceiveFrom(ar, ref from);
+        string msg = Encoding.UTF8.GetString(state.buffer, 0, bytes);
         Debug.Log("[SERVER] Paquete recibido de: " + from);
 
-        OnPacketReceived(state.buffer, from);
+        OnPacketReceived(msg, from);
 
         BeginReceive();
     }
 
-    protected override void OnPacketReceived(byte[] inputPacket, EndPoint fromAddress)
+    protected override void OnPacketReceived(string msg, EndPoint fromAddress)
     {
-        string msg = Encoding.UTF8.GetString(inputPacket).TrimEnd('\0');
         Debug.Log("[SERVER] Mensaje: " + msg);
 
-        if (msg == "HELLO")
+        if (msg == "PLAYER_JOIN_REQUEST")
         {
-            SpawnPlayer(fromAddress);
+            RegisterNewClient(fromAddress);
             return;
         }
 
-        // aquí parseas cualquier otro mensaje (inputs, etc)
+        if (msg.StartsWith("UPDATE|"))
+        {
+            string json = msg.Substring("UPDATE|".Length);
+            PlayerUpdate update = JsonUtility.FromJson<PlayerUpdate>(json);
+
+            if (clients.TryGetValue(fromAddress, out var proxy))
+            {
+                proxy.position = update.position;
+                proxy.rotation = update.rotation;
+                clients[fromAddress] = proxy;
+            }
+
+            return;
+        }
     }
 
-    private void SpawnPlayer(EndPoint address)
+    private void RegisterNewClient(EndPoint address)
     {
         string guid = Guid.NewGuid().ToString();
 
@@ -84,14 +97,14 @@ public class Server : Networking
 
         clients[address] = proxy;
 
-        SendWelcomePacket(proxy);
+        SendJoinApprovalPacket(proxy);
     }
 
 
-    private void SendWelcomePacket(ClientProxy proxy)
+    private void SendJoinApprovalPacket(ClientProxy proxy)
     {
         string json = JsonUtility.ToJson(proxy);
-        byte[] packet = Encoding.UTF8.GetBytes("WELCOME|" + json);
+        byte[] packet = Encoding.UTF8.GetBytes("PLAYER_JOIN_APPROVED|" + json);
 
         SendPacket(packet, proxy.address);
     }
