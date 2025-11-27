@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
@@ -10,6 +11,41 @@ public class ReceiveState
     public Socket socket;
     public byte[] buffer = new byte[4096];
     public EndPoint sender = new IPEndPoint(IPAddress.Any, 0);
+}
+
+public struct ClientProxy
+{
+    public EndPoint address;
+    public string guid;
+    public string name;
+
+    public Vector3 position;
+    public Vector3 rotation;
+
+    public int team;
+
+    public float health;
+}
+
+[Serializable]
+public class PlayerUpdate
+{
+    public string guid;
+    public Vector3 position;
+    public Vector3 rotation;
+}
+
+[Serializable]
+public class PlayerShoot
+{
+    public string shooterGuid;
+
+    public Vector3 origin;
+    public Vector3 direction;
+    public float maxDistance;
+    public float damage;
+
+    public float timestamp;
 }
 
 [Serializable]
@@ -27,16 +63,30 @@ public class Server : Networking
 
     private string EndpointKey(EndPoint ep) => ep.ToString();
 
+    private ConcurrentQueue<string> logQueue = new ConcurrentQueue<string>();
+
+    [SerializeField] private TMPro.TextMeshProUGUI logText;
+
     protected override void Start()
     {
         base.Start();
-        Debug.Log("[SERVIDOR] Iniciando servidor UDP...");
+        Log("[SERVIDOR] Iniciando servidor UDP...");
 
         socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
         socket.Bind(new IPEndPoint(IPAddress.Any, port));
 
-        Debug.Log($"[SERVIDOR] Socket UDP listo en puerto {port}");
+        Log($"[SERVIDOR] Socket UDP listo en puerto {port}");
         BeginReceive();
+    }
+
+    private void Update()
+    {
+        while(logQueue.TryDequeue(out string msg))
+        {
+            Debug.Log(msg);
+
+            if(logText != null) logText.text += msg + "\n";
+        }
     }
 
     private void BeginReceive()
@@ -56,13 +106,13 @@ public class Server : Networking
         {
             int bytes = socket.EndReceiveFrom(ar, ref from);
             string msg = Encoding.UTF8.GetString(state.buffer, 0, bytes);
-            Debug.Log($"[SERVIDOR] Paquete recibido de {from}: {msg}");
+            Log($"[SERVIDOR] Paquete recibido de {from}: {msg}");
 
             OnPacketReceived(msg, from);
         }
         catch (Exception e)
         {
-            Debug.LogError($"[SERVIDOR] Error en ReceiveCallback: {e.Message}");
+            Log($"[SERVIDOR] Error en ReceiveCallback: {e.Message}");
         }
         finally
         {
@@ -72,11 +122,12 @@ public class Server : Networking
 
     protected override void OnPacketReceived(string msg, EndPoint fromAddress)
     {
-        Debug.Log("[SERVIDOR] Procesando mensaje: " + msg);
+        Log("[SERVIDOR] Procesando mensaje: " + msg);
 
-        if (msg == "PLAYER_JOIN_REQUEST")
+        if (msg.StartsWith("PLAYER_JOIN_REQUEST|"))
         {
-            RegisterNewClient(fromAddress);
+            string playerName = msg.Substring("PLAYER_JOIN_REQUEST|".Length);
+            RegisterNewClient(fromAddress, playerName);
             return;
         }
 
@@ -96,7 +147,7 @@ public class Server : Networking
             }
             else
             {
-                Debug.LogWarning("[SERVIDOR] UPDATE recibido de cliente no registrado: " + fromAddress);
+                Log("[SERVIDOR] UPDATE recibido de cliente no registrado: " + fromAddress);
             }
 
             return;
@@ -119,12 +170,12 @@ public class Server : Networking
         }
     }
 
-    private void RegisterNewClient(EndPoint address)
+    private void RegisterNewClient(EndPoint address, string playerName)
     {
         string key = EndpointKey(address);
         if (clients.ContainsKey(key))
         {
-            Debug.Log("[SERVIDOR] Cliente ya registrado: " + key);
+            Log("[SERVIDOR] Cliente ya registrado: " + key);
             return;
         }
 
@@ -134,15 +185,16 @@ public class Server : Networking
         {
             address = address,
             guid = guid,
-            name = "Player" + new System.Random().Next(0, 999),
+            name = string.IsNullOrWhiteSpace(playerName) ? "Player" + new System.Random().Next(0, 999) : playerName,
             position = Vector3.zero,
             rotation = Vector3.zero,
-            team = 0
+            team = 0,
+            health = 100
         };
 
         clients[key] = proxy;
 
-        Debug.Log("[SERVIDOR] Cliente registrado: " + key + " GUID: " + guid);
+        Log("[SERVIDOR] Cliente registrado: " + key + " GUID: " + guid);
 
         SendExistingPlayers(proxy, key);
         SendJoinApprovalPacket(proxy);
@@ -154,7 +206,7 @@ public class Server : Networking
         string json = JsonUtility.ToJson(proxy);
         byte[] packet = Encoding.UTF8.GetBytes("PLAYER_JOIN_APPROVED|" + json);
         SendPacket(packet, proxy.address);
-        Debug.Log("[SERVIDOR] Enviada confirmación a " + proxy.address);
+        Log("[SERVIDOR] Enviada confirmación a " + proxy.address);
     }
 
     private void SendExistingPlayers(ClientProxy newProxy, string newKey)
@@ -206,7 +258,7 @@ public class Server : Networking
         {
             if(kv.Value.guid == guid)
             {
-                Debug.Log("[SERVIDOR] Cliente desconectado: " + guid);
+                Log("[SERVIDOR] Cliente desconectado: " + guid);
                 BroadcastPlayerRemoval(guid);
                 clients.Remove(kv.Key);
                 break;
@@ -226,7 +278,7 @@ public class Server : Networking
 
     private void ProcessShoot(PlayerShoot shoot)
     {
-        Debug.Log("[SERVIDOR] Procesando disparo de " + shoot.shooterGuid);
+        Log("[SERVIDOR] Procesando disparo de " + shoot.shooterGuid);
 
         ClientProxy shooter = default;
         foreach(var c in clients.Values)
@@ -246,7 +298,7 @@ public class Server : Networking
             float distance = toTarget.magnitude;
             if(distance > shoot.maxDistance) continue;
 
-            Debug.Log("[SERVIDOR] Hit validado -> " + target.guid);
+            Log("[SERVIDOR] Hit validado a " + target.guid);
 
             SendHitResult(shooter.guid, target.guid, true, shoot.damage);
             return;
@@ -280,5 +332,10 @@ public class Server : Networking
     {
         string key = EndpointKey(fromAddress);
         clients.Remove(key);
+    }
+
+    private void Log(string msg)
+    {
+        logQueue.Enqueue(msg);
     }
 }

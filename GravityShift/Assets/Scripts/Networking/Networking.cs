@@ -7,7 +7,6 @@ public abstract class Networking : MonoBehaviour
 {
     protected Socket socket;
     protected int port = 5001;
-    protected string serverIP = "127.0.0.1";
 
     protected virtual void Start() { }
 

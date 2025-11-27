@@ -5,39 +5,6 @@ using System.Net.Sockets;
 using System.Text;
 using UnityEngine;
 
-public struct ClientProxy
-{
-    public EndPoint address;
-    public string guid;
-    public string name;
-
-    public Vector3 position;
-    public Vector3 rotation;
-
-    public int team;
-}
-
-[Serializable]
-public class PlayerUpdate
-{
-    public string guid;
-    public Vector3 position;
-    public Vector3 rotation;
-}
-
-[Serializable]
-public class PlayerShoot
-{
-    public string shooterGuid;
-
-    public Vector3 origin;
-    public Vector3 direction;
-    public float maxDistance;
-    public float damage;
-
-    public float timestamp;
-}
-
 public class Client : Networking
 {
     public static Client Instance;
@@ -72,15 +39,15 @@ public class Client : Networking
         }
 
         base.Start();
-        //Debug.Log("[CLIENT] Iniciando cliente...");
+        Debug.Log("[CLIENT] Iniciando cliente...");
 
         socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
         socket.Bind(new IPEndPoint(IPAddress.Any, 0));
 
-        serverEndPoint = new IPEndPoint(IPAddress.Parse(serverIP), port);
-        // Debug.Log("[CLIENT] Conectando a servidor " + serverEndPoint);
+        serverEndPoint = new IPEndPoint(IPAddress.Parse(LobbyUI.SelectedIP), port);
+        Debug.Log("[CLIENT] Conectando a servidor " + serverEndPoint);
 
-        byte[] joinRequest = Encoding.UTF8.GetBytes("PLAYER_JOIN_REQUEST");
+        byte[] joinRequest = Encoding.UTF8.GetBytes("PLAYER_JOIN_REQUEST|" + LobbyUI.PlayerName);
         SendPacket(joinRequest, serverEndPoint);
 
         BeginReceive();
@@ -112,13 +79,13 @@ public class Client : Networking
         {
             int bytes = socket.EndReceiveFrom(ar, ref from);
             string msg = Encoding.UTF8.GetString(state.buffer, 0, bytes);
-            // Debug.Log("[CLIENT] Mensaje recibido: " + msg);
+            Debug.Log("[CLIENT] Mensaje recibido: " + msg);
 
             OnPacketReceived(msg, from);
         }
         catch (Exception e)
         {
-            // Debug.LogError("[CLIENT] ReceiveCallback error: " + e.Message);
+            Debug.LogError("[CLIENT] ReceiveCallback error: " + e.Message);
         }
         finally
         {
@@ -134,7 +101,7 @@ public class Client : Networking
         {
             string json = msg.Substring("PLAYER_JOIN_APPROVED|".Length);
             ClientProxy proxy = JsonUtility.FromJson<ClientProxy>(json);
-            // Debug.Log("[CLIENT] Conexión aprobada. GUID: " + proxy.guid);
+            Debug.Log("[CLIENT] Conexión aprobada. GUID: " + proxy.guid);
 
             mainThreadQueue.Enqueue(() => HandleServerJoinApproval(proxy));
             return;
@@ -224,14 +191,14 @@ public class Client : Networking
 
         if (controller == null)
         {
-            // Debug.LogError("[CLIENT] No se encontró el hijo 'First Person Controller'");
+            Debug.LogError("[CLIENT] No se encontró el hijo 'First Person Controller'");
             return;
         }
 
         localTransform = controller; 
         localRotation = controller;
 
-        // Debug.Log("[CLIENT] Player local instanciado en " + proxy.position);
+        Debug.Log("[CLIENT] Player local instanciado en " + proxy.position);
 
         StartStateSyncLoop();
     }
@@ -251,12 +218,14 @@ public class Client : Networking
             controller.rotationLerpSpeed = 10f;
             controller.maxExtrapolation = 0.2f;
         }
-
         controller.SetTarget(proxy.position, proxy.rotation);
+
+        var tag = obj.GetComponentInChildren<PlayerNameTag>();
+        if(tag != null) tag.SetName(proxy.name);
 
         remotePlayers.Add(proxy.guid, obj);
 
-        // Debug.Log("[CLIENT] Remote player creado: " + proxy.guid);
+        Debug.Log("[CLIENT] Remote player creado: " + proxy.guid);
     }
 
     private void ApplyRemotePlayerUpdate(PlayerUpdate update)
@@ -301,12 +270,12 @@ public class Client : Networking
 
     protected override void OnConnectionReset(EndPoint fromAddress)
     {
-        // Debug.Log("[CLIENT] Conexión reseteada por el servidor");
+        Debug.Log("[CLIENT] Conexión reseteada por el servidor");
     }
 
     private void OnApplicationQuit()
     {
-        // Debug.Log("[CLIENT] Saliendo del juego, enviando disconnect...");
+        Debug.Log("[CLIENT] Saliendo del juego, enviando disconnect...");
         SendDisconnect();
     }
 
