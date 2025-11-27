@@ -20,14 +20,28 @@ public struct ClientProxy
 [Serializable]
 public class PlayerUpdate
 {
-    public string type;
     public string guid;
     public Vector3 position;
     public Vector3 rotation;
 }
 
+[Serializable]
+public class PlayerShoot
+{
+    public string shooterGuid;
+
+    public Vector3 origin;
+    public Vector3 direction;
+    public float maxDistance;
+    public float damage;
+
+    public float timestamp;
+}
+
 public class Client : Networking
 {
+    public static Client Instance;
+
     private EndPoint serverEndPoint;
 
     [Header("Prefabs")]
@@ -48,14 +62,23 @@ public class Client : Networking
 
     protected override void Start()
     {
+        if(Instance == null)
+        {
+            Instance = this;   
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+
         base.Start();
-        Debug.Log("[CLIENT] Iniciando cliente...");
+        //Debug.Log("[CLIENT] Iniciando cliente...");
 
         socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
         socket.Bind(new IPEndPoint(IPAddress.Any, 0));
 
         serverEndPoint = new IPEndPoint(IPAddress.Parse(serverIP), port);
-        Debug.Log("[CLIENT] Conectando a servidor " + serverEndPoint);
+        // Debug.Log("[CLIENT] Conectando a servidor " + serverEndPoint);
 
         byte[] joinRequest = Encoding.UTF8.GetBytes("PLAYER_JOIN_REQUEST");
         SendPacket(joinRequest, serverEndPoint);
@@ -89,13 +112,13 @@ public class Client : Networking
         {
             int bytes = socket.EndReceiveFrom(ar, ref from);
             string msg = Encoding.UTF8.GetString(state.buffer, 0, bytes);
-            Debug.Log("[CLIENT] Mensaje recibido: " + msg);
+            // Debug.Log("[CLIENT] Mensaje recibido: " + msg);
 
             OnPacketReceived(msg, from);
         }
         catch (Exception e)
         {
-            Debug.LogError("[CLIENT] ReceiveCallback error: " + e.Message);
+            // Debug.LogError("[CLIENT] ReceiveCallback error: " + e.Message);
         }
         finally
         {
@@ -111,7 +134,7 @@ public class Client : Networking
         {
             string json = msg.Substring("PLAYER_JOIN_APPROVED|".Length);
             ClientProxy proxy = JsonUtility.FromJson<ClientProxy>(json);
-            Debug.Log("[CLIENT] Conexión aprobada. GUID: " + proxy.guid);
+            // Debug.Log("[CLIENT] Conexión aprobada. GUID: " + proxy.guid);
 
             mainThreadQueue.Enqueue(() => HandleServerJoinApproval(proxy));
             return;
@@ -144,11 +167,51 @@ public class Client : Networking
         if (msg.StartsWith("PLAYER_LEFT|"))
         {
             string guid = msg.Substring("PLAYER_LEFT|".Length);
-            mainThreadQueue.Enqueue(() => {if(remotePlayers.TryGetValue(guid, out var obj)){
+            mainThreadQueue.Enqueue(() => 
+            {
+                if(remotePlayers.TryGetValue(guid, out var obj))
+                {
                     Destroy(obj);
                     remotePlayers.Remove(guid);
                 }
             });
+        }
+
+        if (msg.StartsWith("HIT_RESULT|"))
+        {
+            string json = msg.Substring("HIT_RESULT|".Length);
+            HitResult result = JsonUtility.FromJson<HitResult>(json);
+
+            if(result.shooterGuid == GUID)
+            {
+                if (result.hit)
+                {
+                    Debug.Log("[CLIENT] Has impactado a " + result.targetGuid);
+                }
+                else
+                {
+                    Debug.Log("[CLIENT] Disparo fallado");
+                }   
+            }
+
+            if(result.targetGuid == GUID && result.hit)
+            {
+                mainThreadQueue.Enqueue(() =>
+                {
+                    var hitBox = localPlayer.GetComponentInChildren<HitBox>();
+                    if(hitBox != null)
+                    {
+                        hitBox.OnHit(result.damage);
+                        Debug.Log("[CLIENT] Has recibido {result.damage} de daño de {result.shooterGuid}");
+                    }
+                    else
+                    {
+                        Debug.LogWarning("[CLIENT] No se encontró HitBox en localPlayer");
+                    }
+                });
+            }
+
+            return;
         }
     }
 
@@ -161,14 +224,14 @@ public class Client : Networking
 
         if (controller == null)
         {
-            Debug.LogError("[CLIENT] No se encontró el hijo 'First Person Controller'");
+            // Debug.LogError("[CLIENT] No se encontró el hijo 'First Person Controller'");
             return;
         }
 
         localTransform = controller; 
         localRotation = controller;
 
-        Debug.Log("[CLIENT] Player local instanciado en " + proxy.position);
+        // Debug.Log("[CLIENT] Player local instanciado en " + proxy.position);
 
         StartStateSyncLoop();
     }
@@ -193,7 +256,7 @@ public class Client : Networking
 
         remotePlayers.Add(proxy.guid, obj);
 
-        Debug.Log("[CLIENT] Remote player creado: " + proxy.guid);
+        // Debug.Log("[CLIENT] Remote player creado: " + proxy.guid);
     }
 
     private void ApplyRemotePlayerUpdate(PlayerUpdate update)
@@ -225,7 +288,6 @@ public class Client : Networking
     {
         PlayerUpdate update = new PlayerUpdate
         {
-            type = "update",
             guid = GUID,
             position = localTransform.position,
             rotation = localRotation.eulerAngles
@@ -239,12 +301,12 @@ public class Client : Networking
 
     protected override void OnConnectionReset(EndPoint fromAddress)
     {
-        Debug.Log("[CLIENT] Conexión reseteada por el servidor");
+        // Debug.Log("[CLIENT] Conexión reseteada por el servidor");
     }
 
     private void OnApplicationQuit()
     {
-        Debug.Log("[CLIENT] Saliendo del juego, enviando disconnect...");
+        // Debug.Log("[CLIENT] Saliendo del juego, enviando disconnect...");
         SendDisconnect();
     }
 
@@ -268,4 +330,12 @@ public class Client : Networking
         }
         catch{}
     }
+
+    public void PublicSendPacket(byte[] outputPacket, EndPoint toAddress)
+    {
+        SendPacket(outputPacket, toAddress);
+    }
+
+    public string GetGUID() => GUID;
+    public EndPoint GetServerEndPoint() => serverEndPoint;
 }

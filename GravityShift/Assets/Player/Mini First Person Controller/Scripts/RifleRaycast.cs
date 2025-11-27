@@ -1,3 +1,4 @@
+using System.Text;
 using UnityEngine;
 
 public class RifleRaycast : MonoBehaviour
@@ -71,9 +72,20 @@ public class RifleRaycast : MonoBehaviour
         {
             Debug.DrawLine(ray.origin, hit.point, Color.red, 1f);
             
-            HitBox hitBox = hit.collider.GetComponent<HitBox>();
-            if (hitBox != null)
-                hitBox.OnHit(damage);
+            PlayerShoot shoot = new PlayerShoot
+            {
+                shooterGuid = Client.Instance.GetGUID(),
+                origin = ray.origin,
+                direction = ray.direction,
+                maxDistance = range,
+                damage = damage,
+                timestamp = Time.time
+            };
+
+            string json = JsonUtility.ToJson(shoot);
+            byte[] packet = Encoding.UTF8.GetBytes("SHOOT|" + json);
+
+            Client.Instance.PublicSendPacket(packet, Client.Instance.GetServerEndPoint());
         }
         else
         {

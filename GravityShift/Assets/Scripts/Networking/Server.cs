@@ -12,6 +12,15 @@ public class ReceiveState
     public EndPoint sender = new IPEndPoint(IPAddress.Any, 0);
 }
 
+[Serializable]
+public class HitResult
+{
+    public bool hit;
+    public string shooterGuid;
+    public string targetGuid;
+    public float damage;
+}
+
 public class Server : Networking
 {
     private Dictionary<string, ClientProxy> clients = new();
@@ -99,6 +108,15 @@ public class Server : Networking
             HandleDisconnect(guid);
             return;
         }
+
+        if (msg.StartsWith("SHOOT|"))
+        {
+            string json = msg.Substring("SHOOT|".Length);
+            PlayerShoot shoot = JsonUtility.FromJson<PlayerShoot>(json);
+
+            ProcessShoot(shoot);
+            return;
+        }
     }
 
     private void RegisterNewClient(EndPoint address)
@@ -166,7 +184,6 @@ public class Server : Networking
     {
         PlayerUpdate update = new PlayerUpdate
         {
-            type = "update",
             guid = proxy.guid,
             position = proxy.position,
             rotation = proxy.rotation
@@ -204,6 +221,58 @@ public class Server : Networking
         foreach(var c in clients.Values)
         {
             SendPacket(packet, c.address);
+        }
+    }
+
+    private void ProcessShoot(PlayerShoot shoot)
+    {
+        Debug.Log("[SERVIDOR] Procesando disparo de " + shoot.shooterGuid);
+
+        ClientProxy shooter = default;
+        foreach(var c in clients.Values)
+        {
+            if(c.guid == shoot.shooterGuid) shooter = c;
+        }
+
+        foreach(var target in clients.Values)
+        {
+            if(target.guid == shooter.guid) continue;
+
+            Vector3 toTarget = target.position - shoot.origin;
+
+            float dot = Vector3.Dot(shoot.direction.normalized, toTarget.normalized);
+            if(dot < 0.90f) continue;
+
+            float distance = toTarget.magnitude;
+            if(distance > shoot.maxDistance) continue;
+
+            Debug.Log("[SERVIDOR] Hit validado -> " + target.guid);
+
+            SendHitResult(shooter.guid, target.guid, true, shoot.damage);
+            return;
+        }
+
+        SendHitResult(shooter.guid, "", false, 0);
+    }
+
+    private void SendHitResult(string shooterGuid, string targetGuid, bool hit, float damage)
+    {
+        HitResult result = new HitResult
+        {
+            hit = hit,
+            shooterGuid = shooterGuid,
+            targetGuid = targetGuid,
+            damage = damage
+        };
+
+        string json = JsonUtility.ToJson(result);
+        byte[] packet = Encoding.UTF8.GetBytes("HIT_RESULT|" + json);
+
+        foreach(var c in clients.Values)
+        {
+            if(c.guid == shooterGuid) SendPacket(packet, c.address);
+
+            if(hit && c.guid == targetGuid) SendPacket(packet, c.address);
         }
     }
 
