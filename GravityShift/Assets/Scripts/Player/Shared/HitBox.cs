@@ -3,26 +3,25 @@
 public class HitBox : MonoBehaviour
 {
     [Tooltip("Pon 1 para cuerpo, 2 para cabeza")]
-    public float damageMultiplier = 1.0f;
+    [SerializeField] private float damageMultiplier = 1.0f;
 
-    // Esta función es llamada por la bala cuando choca
+    private HealthSystem healthSystem;
+
+    void Start()
+    {
+        healthSystem = GetComponentInParent<HealthSystem>();
+    }
+
+    public void TakeDamage(float damage)
+    {
+        if (healthSystem == null) return;
+        
+        float finalDamage = damage * damageMultiplier;
+        healthSystem.TakeDamage(finalDamage);
+    }
+
     public void OnHit(float damage)
     {
-        // 1. Calculamos el daño final (Base * Multiplicador)
-        float finalDamage = damage * damageMultiplier;
-
-        // 2. Obtenemos el nombre del jugador principal (la raíz del objeto)
-        // Así sabrás si le diste a "Player 1" o "Enemigo"
-        string nombreJugador = transform.root.name;
-
-        // 3. Obtenemos qué parte ha sido golpeada (Cabeza o Cuerpo)
-        string parteGolpeada = gameObject.name;
-
-        // 4. Imprimimos el LOG
-        Debug.Log($" IMPACTO: {nombreJugador} recibió {finalDamage} de daño en {parteGolpeada} (Multiplicador: x{damageMultiplier})");
-
-        // AQUI iría la lógica de restar vida:
-        // HealthSystem health = GetComponentInParent<HealthSystem>();
-        // if(health) health.TakeDamage(finalDamage);
+        TakeDamage(damage);
     }
 }

@@ -1184,7 +1184,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1628437183697848590}
-  - component: {fileID: 2258753372808855111}
+  - component: {fileID: 1877435577042814190}
   - component: {fileID: 6963141435246344390}
   - component: {fileID: 8344168272803471493}
   m_Layer: 0
@@ -1217,7 +1217,7 @@ Transform:
   - {fileID: 8023144744402718480}
   m_Father: {fileID: 64679366928295733}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &2258753372808855111
+--- !u!114 &1877435577042814190
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -1226,14 +1226,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 2332886380138627003}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a7796b2127a8be846a85bccb9c36e1d2, type: 3}
+  m_Script: {fileID: 11500000, guid: e26f9638c7c92304e931984518553ea7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   maxAmmo: 30
-  raycastDistance: 2
+  damage: 25
+  range: 100
   muzzle: {fileID: 4949280045787787049}
-  bulletPrefab: {fileID: 5341742223406746680, guid: 9c3cddd6060b7cc4eadfb9cefcf6e7db, type: 3}
-  bulletSpeed: 50
   animator: {fileID: 6963141435246344390}
   audioSource: {fileID: 8344168272803471493}
   shootSounds:
@@ -1505,6 +1504,7 @@ GameObject:
   - component: {fileID: 5716138003262645547}
   - component: {fileID: 2930666865318220428}
   - component: {fileID: 7469598297571598103}
+  - component: {fileID: 2860716331855968220}
   m_Layer: 6
   m_Name: First Person Controller
   m_TagString: Untagged
@@ -1642,6 +1642,22 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   damageMultiplier: 1
+--- !u!114 &2860716331855968220
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3176785935561002171}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 618811d571992424fb3a3c272b912fd4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxHealth: 100
+  hitBoxes:
+  - {fileID: 7469598297571598103}
+  - {fileID: 6395600226822022701}
 --- !u!1 &3198396164089710152
 GameObject:
   m_ObjectHideFlags: 0
@@ -1966,7 +1982,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3477191690242087164}
-  m_Enabled: 0
+  m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c5adb760d53a06343a68a40b5d49787e, type: 3}
   m_Name: 
@@ -3044,7 +3060,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6534262857070529435}
-  - component: {fileID: 7683455351524120967}
+  - component: {fileID: 8047107291642710860}
   - component: {fileID: 4964771241713355280}
   - component: {fileID: 2977756000426839566}
   m_Layer: 0
@@ -3074,7 +3090,7 @@ Transform:
   - {fileID: 8742679447521320787}
   m_Father: {fileID: 64679366928295733}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &7683455351524120967
+--- !u!114 &8047107291642710860
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -3083,14 +3099,13 @@ MonoBehaviour:
   m_GameObject: {fileID: 6593493070695018543}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b71372eddbf455540a8c726c25b86c5a, type: 3}
+  m_Script: {fileID: 11500000, guid: 816860e13986a0a4c9faf42c1c4ab348, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   maxAmmo: 12
-  raycastDistance: 2
+  damage: 15
+  range: 50
   muzzle: {fileID: 8742679447521320787}
-  bulletPrefab: {fileID: 3575611928538805115, guid: 745a87995944ab94caa447ec2061dbc4, type: 3}
-  bulletSpeed: 60
   animator: {fileID: 4964771241713355280}
   audioSource: {fileID: 2977756000426839566}
   shootSounds:
