@@ -30,20 +30,19 @@ public class Client : Networking
 {
     private EndPoint serverEndPoint;
 
+    [Header("Prefabs")]
     public GameObject localPlayerPrefab;
     public GameObject remotePlayerPrefab;
+
     private GameObject localPlayer;
     private string GUID;
     private Transform localTransform;
     private Transform localRotation;
 
-    public float sendRate = 0.2f;
+    [Header("Network")]
+    public float sendRate = 0.1f;
 
     private Dictionary<string, GameObject> remotePlayers = new();
-
-    private Dictionary<string, Vector3> remoteTargetPositions = new();
-    private Dictionary<string, Vector3> remoteTargetRotations = new();
-    private float positionLerpSpeed = 10f;
 
     private readonly Queue<Action> mainThreadQueue = new Queue<Action>();
 
@@ -71,24 +70,6 @@ public class Client : Networking
             var action = mainThreadQueue.Dequeue();
             action.Invoke();
         }
-
-        foreach (var kv in remotePlayers)
-        {
-            string guid = kv.Key;
-            GameObject go = kv.Value;
-            if (go == null) continue;
-
-            if (remoteTargetPositions.TryGetValue(guid, out Vector3 targetPos))
-            {
-                go.transform.position = Vector3.Lerp(go.transform.position, targetPos, Time.deltaTime * positionLerpSpeed);
-            }
-
-            if (remoteTargetRotations.TryGetValue(guid, out Vector3 targetRot))
-            {
-                Quaternion targetQ = Quaternion.Euler(targetRot);
-                go.transform.rotation = Quaternion.Slerp(go.transform.rotation, targetQ, Time.deltaTime * positionLerpSpeed);
-            }
-        }
     }
 
     private void BeginReceive()
@@ -96,8 +77,7 @@ public class Client : Networking
         ReceiveState state = new ReceiveState();
         state.socket = socket;
 
-        socket.BeginReceiveFrom(state.buffer, 0, state.buffer.Length, SocketFlags.None,
-            ref state.sender, ReceiveCallback, state);
+        socket.BeginReceiveFrom(state.buffer, 0, state.buffer.Length, SocketFlags.None, ref state.sender, ReceiveCallback, state);
     }
 
     private void ReceiveCallback(IAsyncResult ar)
@@ -160,6 +140,16 @@ public class Client : Networking
             mainThreadQueue.Enqueue(() => ApplyRemotePlayerUpdate(update));
             return;
         }
+
+        if (msg.StartsWith("PLAYER_LEFT|"))
+        {
+            string guid = msg.Substring("PLAYER_LEFT|".Length);
+            mainThreadQueue.Enqueue(() => {if(remotePlayers.TryGetValue(guid, out var obj)){
+                    Destroy(obj);
+                    remotePlayers.Remove(guid);
+                }
+            });
+        }
     }
 
     private void HandleServerJoinApproval(ClientProxy proxy)
@@ -189,6 +179,18 @@ public class Client : Networking
         if (proxy.guid == GUID) return;
 
         GameObject obj = Instantiate(remotePlayerPrefab, proxy.position, Quaternion.Euler(proxy.rotation));
+
+        var controller = obj.GetComponent<RemotePlayerController>();
+        if(controller == null)
+        {
+            controller = obj.AddComponent<RemotePlayerController>();
+            controller.positionLerpSpeed = 10f;
+            controller.rotationLerpSpeed = 10f;
+            controller.maxExtrapolation = 0.2f;
+        }
+
+        controller.SetTarget(proxy.position, proxy.rotation);
+
         remotePlayers.Add(proxy.guid, obj);
 
         Debug.Log("[CLIENT] Remote player creado: " + proxy.guid);
@@ -196,10 +198,17 @@ public class Client : Networking
 
     private void ApplyRemotePlayerUpdate(PlayerUpdate update)
     {
-        if (remotePlayers.TryGetValue(update.guid, out GameObject obj))
+        if (!remotePlayers.TryGetValue(update.guid, out GameObject obj)) return;
+
+        var controller = obj.GetComponent<RemotePlayerController>();
+        if(controller != null)
         {
-            remoteTargetPositions[update.guid] = update.position;
-            remoteTargetRotations[update.guid] = update.rotation;
+            controller.SetTarget(update.position, update.rotation);
+        }
+        else
+        {
+            obj.transform.position = update.position;
+            obj.transform.rotation = Quaternion.Euler(update.rotation);
         }
     }
 
@@ -207,8 +216,7 @@ public class Client : Networking
     {
         while (true)
         {
-            if (localTransform != null)
-                SendPlayerState();
+            if (localTransform != null) SendPlayerState();
             await System.Threading.Tasks.Task.Delay((int)(sendRate * 1000f));
         }
     }
@@ -232,5 +240,32 @@ public class Client : Networking
     protected override void OnConnectionReset(EndPoint fromAddress)
     {
         Debug.Log("[CLIENT] Conexión reseteada por el servidor");
+    }
+
+    private void OnApplicationQuit()
+    {
+        Debug.Log("[CLIENT] Saliendo del juego, enviando disconnect...");
+        SendDisconnect();
+    }
+
+    private void OnDisable()
+    {
+        if(socket != null) SendDisconnect();
+    }
+
+    private void SendDisconnect()
+    {
+        try
+        {
+            byte[] packet = Encoding.UTF8.GetBytes("DISCONNECT|" + GUID);
+            SendPacket(packet, serverEndPoint);
+        }
+        catch{}
+
+        try
+        {
+            socket?.Close();
+        }
+        catch{}
     }
 }

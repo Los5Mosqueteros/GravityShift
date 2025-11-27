@@ -2,55 +2,66 @@ using UnityEngine;
 
 public class RemotePlayerController : MonoBehaviour
 {
-    [Header("Interpolation Settings")]
-    public float interpolationSpeed = 10f;
-    public float maxExtrapolationTime = 0.25f;
+    [Header("Smoothing")]
+    public float positionLerpSpeed = 20f;
+    public float rotationLerpSpeed = 20f;
 
-    private Vector3 lastPosition;
+    [Header("Extrapolation")]
+    public float maxExtrapolation = 0.1f;
+    public float minTeleportDistance = 5f;
+
     private Vector3 targetPosition;
-    private Vector3 velocity;
+    private Vector3 targetRotationEuler;
+    private Vector3 lastTargetPosition;
+    private float lastTargetTime;
 
-    private Quaternion lastRotation;
-    private Quaternion targetRotation;
+    private Vector3 estimatedVelocity = Vector3.zero;
 
-    private float lastUpdateTime;
-
-    private void Start()
+    private void Awake()
     {
-        lastPosition = transform.position;
         targetPosition = transform.position;
-
-        lastRotation = transform.rotation;
-        targetRotation = transform.rotation;
-
-        lastUpdateTime = Time.time;
+        targetRotationEuler = transform.rotation.eulerAngles;
+        lastTargetPosition = targetPosition;
+        lastTargetTime = Time.time;
     }
 
     private void Update()
     {
-        float deltaTime = Time.time - lastUpdateTime;
-
-        transform.position = Vector3.Lerp(transform.position, targetPosition, interpolationSpeed * Time.deltaTime);
-        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, interpolationSpeed * Time.deltaTime);
-
-        if(deltaTime > 0.2f)
+        float dt = Time.deltaTime;
+        float dist = Vector3.Distance(transform.position, targetPosition);
+        if(dist > minTeleportDistance)
         {
-            float extrapolationFactor = Mathf.Min(deltaTime, maxExtrapolationTime);
-            transform.position += velocity * extrapolationFactor;
+            transform.position = targetPosition;
         }
+        else
+        {
+            float timeSinceLast = Time.time - lastTargetTime;
+            if(timeSinceLast > 0f && timeSinceLast < maxExtrapolation)
+            {
+                Vector3 extrapolatedTarget = targetPosition + estimatedVelocity * timeSinceLast;
+                transform.position = Vector3.Lerp(transform.position, extrapolatedTarget, 1f - Mathf.Exp(-positionLerpSpeed * dt));
+            }
+            else
+            {
+                transform.position = Vector3.Lerp(transform.position, targetPosition, 1f - Mathf.Exp(-positionLerpSpeed * dt));
+            }
+        }
+
+        Quaternion targetQ = Quaternion.Euler(targetRotationEuler);
+        transform.rotation = Quaternion.Slerp(transform.rotation, targetQ, 1f - Mathf.Exp(-rotationLerpSpeed * dt));
     }
 
-    public void SetTarget(Vector3 newPosition, Vector3 newRotationEuler)
+    public void SetTarget(Vector3 pos, Vector3 rotEuler)
     {
-        lastPosition = targetPosition;
-        lastRotation = targetRotation;
+        float now = Time.time;
 
-        targetPosition = newPosition;
-        targetRotation = Quaternion.Euler(newRotationEuler);
+        float deltaT = Mathf.Max(0.0001f, now - lastTargetTime);
+        estimatedVelocity = (pos - lastTargetPosition) / deltaT;
 
-        float deltaTime = Time.time - lastUpdateTime;
-        if(deltaTime > 0) velocity = (targetPosition - lastPosition) / deltaTime;
+        lastTargetPosition = pos;
+        lastTargetTime = now;
 
-        lastUpdateTime = Time.time;
+        targetPosition = pos;
+        targetRotationEuler = rotEuler;
     }
 }

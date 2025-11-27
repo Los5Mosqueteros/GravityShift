@@ -35,8 +35,7 @@ public class Server : Networking
         ReceiveState state = new ReceiveState();
         state.socket = socket;
 
-        socket.BeginReceiveFrom(state.buffer, 0, state.buffer.Length, SocketFlags.None,
-            ref state.sender, ReceiveCallback, state);
+        socket.BeginReceiveFrom(state.buffer, 0, state.buffer.Length, SocketFlags.None, ref state.sender, ReceiveCallback, state);
     }
 
     private void ReceiveCallback(IAsyncResult ar)
@@ -91,6 +90,13 @@ public class Server : Networking
                 Debug.LogWarning("[SERVIDOR] UPDATE recibido de cliente no registrado: " + fromAddress);
             }
 
+            return;
+        }
+
+        if (msg.StartsWith("DISCONNECT|"))
+        {
+            string guid = msg.Substring("DISCONNECT|".Length);
+            HandleDisconnect(guid);
             return;
         }
     }
@@ -174,6 +180,30 @@ public class Server : Networking
             if (kv.guid == proxy.guid) continue;
 
             SendPacket(packet, kv.address);
+        }
+    }
+
+    private void HandleDisconnect(string guid)
+    {
+        foreach(var kv in clients)
+        {
+            if(kv.Value.guid == guid)
+            {
+                Debug.Log("[SERVIDOR] Cliente desconectado: " + guid);
+                BroadcastPlayerRemoval(guid);
+                clients.Remove(kv.Key);
+                break;
+            }
+        }
+    }
+
+    private void BroadcastPlayerRemoval(string guid)
+    {
+        byte[] packet = Encoding.UTF8.GetBytes("PLAYER_LEFT|" + guid);
+
+        foreach(var c in clients.Values)
+        {
+            SendPacket(packet, c.address);
         }
     }
 
