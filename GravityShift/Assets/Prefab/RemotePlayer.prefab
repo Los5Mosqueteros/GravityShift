@@ -155,7 +155,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 160597388187147674}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7c2e3ae36c3cf624a9c4d15007852865, type: 3}
   m_Name: 
@@ -169,7 +169,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 160597388187147674}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b61f54fce82d8804caf2803aa78a5914, type: 3}
   m_Name: 
@@ -532,6 +532,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   nameText: {fileID: 8735803278529776719}
+  offset: {x: 0, y: 2, z: 0}
 --- !u!114 &8735803278529776719
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -900,6 +901,9 @@ MonoBehaviour:
   bulletPrefab: {fileID: 3575611928538805115, guid: 745a87995944ab94caa447ec2061dbc4, type: 3}
   bulletSpeed: 60
   animator: {fileID: 7731578665375866489}
+  audioSource: {fileID: 0}
+  shootSounds: []
+  reloadSound: {fileID: 0}
 --- !u!95 &7731578665375866489
 Animator:
   serializedVersion: 7
