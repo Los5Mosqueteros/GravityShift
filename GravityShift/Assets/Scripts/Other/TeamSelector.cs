@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class TeamSelector : MonoBehaviour
 {
-    public ClientPlayerUDP client;
+    public Client client;
 
     private void Update()
     {

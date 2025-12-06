@@ -17,6 +17,7 @@ public class Client : Networking
 
     private GameObject localPlayer;
     private string GUID;
+    private int currentTeam = 0;
     private Transform localTransform;
     private Transform localRotation;
 
@@ -101,7 +102,7 @@ public class Client : Networking
         {
             string json = msg.Substring("PLAYER_JOIN_APPROVED|".Length);
             ClientProxy proxy = JsonUtility.FromJson<ClientProxy>(json);
-            Debug.Log("[CLIENT] Conexión aprobada. GUID: " + proxy.guid);
+            Debug.Log("[CLIENT] Conexión aprobada. GUID: " + proxy.guid + "Team: " + proxy.team);
 
             mainThreadQueue.Enqueue(() => HandleServerJoinApproval(proxy));
             return;
@@ -128,6 +129,14 @@ public class Client : Networking
             string json = msg.Substring("PLAYER_UPDATE|".Length);
             PlayerUpdate update = JsonUtility.FromJson<PlayerUpdate>(json);
             mainThreadQueue.Enqueue(() => ApplyRemotePlayerUpdate(update));
+            return;
+        }
+
+        if (msg.StartsWith("TEAM_CHANGED|"))
+        {
+            string json = msg.Substring("TEAM_CHANGED|".Length);
+            TeamChangeData teamChange = JsonUtility.FromJson<TeamChangeData>(json);
+            mainThreadQueue.Enqueue(() => HandleTeamChange(teamChange));
             return;
         }
 
@@ -185,6 +194,7 @@ public class Client : Networking
     private void HandleServerJoinApproval(ClientProxy proxy)
     {
         GUID = proxy.guid;
+        currentTeam = proxy.team;
 
         localPlayer = Instantiate(localPlayerPrefab, proxy.position, Quaternion.Euler(proxy.rotation));
         Transform controller = localPlayer.transform.Find("First Person Controller");
@@ -198,6 +208,11 @@ public class Client : Networking
         localTransform = controller; 
         localRotation = controller;
 
+        PlayerAppearance appearance = localPlayer.GetComponentInChildren<PlayerAppearance>();
+        if (appearance != null)
+        {
+            appearance.SetTeamColor(currentTeam);
+        }
         Debug.Log("[CLIENT] Player local instanciado en " + proxy.position);
 
         StartStateSyncLoop();
@@ -223,9 +238,15 @@ public class Client : Networking
         var tag = obj.GetComponentInChildren<PlayerNameTag>();
         if(tag != null) tag.SetName(proxy.name);
 
+        var appearance = obj.GetComponentInChildren<PlayerAppearance>();
+        if (appearance != null)
+        {
+            appearance.SetTeamColor(proxy.team);
+        }
+
         remotePlayers.Add(proxy.guid, obj);
 
-        Debug.Log("[CLIENT] Remote player creado: " + proxy.guid);
+        Debug.Log("[CLIENT] Remote player creado: " + proxy.guid + "Team: " + proxy.team);
     }
 
     private void ApplyRemotePlayerUpdate(PlayerUpdate update)
@@ -241,6 +262,30 @@ public class Client : Networking
         {
             obj.transform.position = update.position;
             obj.transform.rotation = Quaternion.Euler(update.rotation);
+        }
+    }
+    private void HandleTeamChange(TeamChangeData teamChange)
+    {
+        Debug.Log($"[CLIENT] Jugador {teamChange.guid} cambió al equipo {teamChange.team}");
+
+        if (teamChange.guid == GUID)
+        {
+            currentTeam = teamChange.team;
+
+            PlayerAppearance appearance = localPlayer?.GetComponentInChildren<PlayerAppearance>();
+            if (appearance != null)
+            {
+                appearance.SetTeamColor(currentTeam);
+                Debug.Log("[CLIENT] Tu equipo cambió a: " + currentTeam);
+            }
+        }
+        else if (remotePlayers.TryGetValue(teamChange.guid, out GameObject obj))
+        {
+            PlayerAppearance appearance = obj.GetComponentInChildren<PlayerAppearance>();
+            if (appearance != null)
+            {
+                appearance.SetTeamColor(teamChange.team);
+            }
         }
     }
 
@@ -259,7 +304,8 @@ public class Client : Networking
         {
             guid = GUID,
             position = localTransform.position,
-            rotation = localRotation.eulerAngles
+            rotation = localRotation.eulerAngles,
+            team = currentTeam,
         };
 
         string json = JsonUtility.ToJson(update);
@@ -267,7 +313,26 @@ public class Client : Networking
 
         SendPacket(packet, serverEndPoint);
     }
+    public void RequestTeamChange(int newTeam)
+    {
+        if (string.IsNullOrEmpty(GUID))
+        {
+            Debug.LogWarning("[CLIENT] No se puede cambiar de equipo: GUID no asignado");
+            return;
+        }
 
+        TeamChangeData teamChange = new TeamChangeData
+        {
+            guid = GUID,
+            team = newTeam
+        };
+
+        string json = JsonUtility.ToJson(teamChange);
+        byte[] packet = Encoding.UTF8.GetBytes("CHANGE_TEAM|" + json);
+
+        SendPacket(packet, serverEndPoint);
+        Debug.Log($"[CLIENT] Solicitando cambio al equipo {newTeam}");
+    }
     protected override void OnConnectionReset(EndPoint fromAddress)
     {
         Debug.Log("[CLIENT] Conexión reseteada por el servidor");
@@ -306,5 +371,6 @@ public class Client : Networking
     }
 
     public string GetGUID() => GUID;
+    public int GetCurrentTeam() => currentTeam;
     public EndPoint GetServerEndPoint() => serverEndPoint;
 }

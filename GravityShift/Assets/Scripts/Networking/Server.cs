@@ -33,6 +33,7 @@ public class PlayerUpdate
     public string guid;
     public Vector3 position;
     public Vector3 rotation;
+    public int team;
 }
 
 [Serializable]
@@ -57,9 +58,18 @@ public class HitResult
     public float damage;
 }
 
+[Serializable]
+public class TeamChangeData
+{
+    public string guid;
+    public int team;
+}
+
 public class Server : Networking
 {
     private Dictionary<string, ClientProxy> clients = new();
+
+    private TeamManager teamManager = new TeamManager();
 
     private string EndpointKey(EndPoint ep) => ep.ToString();
 
@@ -106,7 +116,7 @@ public class Server : Networking
         {
             int bytes = socket.EndReceiveFrom(ar, ref from);
             string msg = Encoding.UTF8.GetString(state.buffer, 0, bytes);
-            Log($"[SERVIDOR] Paquete recibido de {from}: {msg}");
+            //Log($"[SERVIDOR] Paquete recibido de {from}: {msg}");
 
             OnPacketReceived(msg, from);
         }
@@ -153,6 +163,14 @@ public class Server : Networking
             return;
         }
 
+        if (msg.StartsWith("CHANGE_TEAM|"))
+        {
+            string json = msg.Substring("CHANGE_TEAM|".Length);
+            TeamChangeData teamChange = JsonUtility.FromJson<TeamChangeData>(json);
+            HandleTeamChange(teamChange.guid, teamChange.team);
+            return;
+        }
+
         if (msg.StartsWith("DISCONNECT|"))
         {
             string guid = msg.Substring("DISCONNECT|".Length);
@@ -180,6 +198,7 @@ public class Server : Networking
         }
 
         string guid = Guid.NewGuid().ToString();
+        int assignedTeam = teamManager.AssignTeam(guid);
 
         ClientProxy proxy = new ClientProxy
         {
@@ -188,7 +207,7 @@ public class Server : Networking
             name = string.IsNullOrWhiteSpace(playerName) ? "Player" + new System.Random().Next(0, 999) : playerName,
             position = Vector3.zero,
             rotation = Vector3.zero,
-            team = 0,
+            team = assignedTeam,
             health = 100
         };
 
@@ -206,7 +225,7 @@ public class Server : Networking
         string json = JsonUtility.ToJson(proxy);
         byte[] packet = Encoding.UTF8.GetBytes("PLAYER_JOIN_APPROVED|" + json);
         SendPacket(packet, proxy.address);
-        Log("[SERVIDOR] Enviada confirmación a " + proxy.address);
+        Log("[SERVIDOR] Enviada confirmación a " + proxy.address + ", TEAM " + proxy.team);
     }
 
     private void SendExistingPlayers(ClientProxy newProxy, string newKey)
@@ -238,7 +257,8 @@ public class Server : Networking
         {
             guid = proxy.guid,
             position = proxy.position,
-            rotation = proxy.rotation
+            rotation = proxy.rotation,
+            team = proxy.team
         };
 
         string json = JsonUtility.ToJson(update);
@@ -251,6 +271,55 @@ public class Server : Networking
             SendPacket(packet, kv.address);
         }
     }
+    private void HandleTeamChange(string guid, int newTeam)
+    {
+        string targetKey = null;
+        ClientProxy targetProxy = default;
+
+        foreach (var kv in clients)
+        {
+            if (kv.Value.guid == guid)
+            {
+                targetKey = kv.Key;
+                targetProxy = kv.Value;
+                break;
+            }
+        }
+
+        if (targetKey == null)
+        {
+            Log($"[SERVIDOR] No se encontró cliente con GUID {guid} para cambio de equipo");
+            return;
+        }
+
+        teamManager.ChangeTeam(guid, newTeam);
+
+        targetProxy.team = newTeam;
+        clients[targetKey] = targetProxy;
+
+        Log($"[SERVIDOR] Jugador {guid} ({targetProxy.name}) cambió al equipo {newTeam}");
+
+        BroadcastTeamChange(guid, newTeam);
+    }
+    private void BroadcastTeamChange(string guid, int team)
+    {
+        TeamChangeData teamChange = new TeamChangeData
+        {
+            guid = guid,
+            team = team
+        };
+
+        string json = JsonUtility.ToJson(teamChange);
+        byte[] packet = Encoding.UTF8.GetBytes("TEAM_CHANGED|" + json);
+
+        int count = 0;
+        foreach (var c in clients.Values)
+        {
+            SendPacket(packet, c.address);
+            count++;
+        }
+        Log($"[SERVIDOR] Broadcast cambio de equipo de {guid} al equipo {team} a {count} clientes");
+    }
 
     private void HandleDisconnect(string guid)
     {
@@ -259,6 +328,7 @@ public class Server : Networking
             if(kv.Value.guid == guid)
             {
                 Log("[SERVIDOR] Cliente desconectado: " + guid);
+                teamManager.RemovePlayer(guid);
                 BroadcastPlayerRemoval(guid);
                 clients.Remove(kv.Key);
                 break;
@@ -331,6 +401,11 @@ public class Server : Networking
     protected override void OnConnectionReset(EndPoint fromAddress)
     {
         string key = EndpointKey(fromAddress);
+        if (clients.TryGetValue(key, out var proxy))
+        {
+            Log($"[SERVIDOR] Conexión reseteada: {fromAddress} | GUID: {proxy.guid}");
+            teamManager.RemovePlayer(proxy.guid);
+        }
         clients.Remove(key);
     }
 
