@@ -63,6 +63,7 @@ public class TeamChangeData
 {
     public string guid;
     public int team;
+    public Vector3 position;
 }
 
 public class Server : Networking
@@ -76,6 +77,8 @@ public class Server : Networking
     private ConcurrentQueue<string> logQueue = new ConcurrentQueue<string>();
 
     [SerializeField] private TMPro.TextMeshProUGUI logText;
+    [Header("Spawn Manager")]
+    [SerializeField] private SpawnManager spawnManager;
 
     protected override void Start()
     {
@@ -199,13 +202,14 @@ public class Server : Networking
 
         string guid = Guid.NewGuid().ToString();
         int assignedTeam = teamManager.AssignTeam(guid);
+        Vector3 spawnPosition = GetSpawnPosition(assignedTeam);
 
         ClientProxy proxy = new ClientProxy
         {
             address = address,
             guid = guid,
             name = string.IsNullOrWhiteSpace(playerName) ? "Player" + new System.Random().Next(0, 999) : playerName,
-            position = Vector3.zero,
+            position = spawnPosition,
             rotation = Vector3.zero,
             team = assignedTeam,
             health = 100
@@ -293,32 +297,32 @@ public class Server : Networking
         }
 
         teamManager.ChangeTeam(guid, newTeam);
+        Vector3 newSpawnPosition = GetSpawnPosition(newTeam);
 
         targetProxy.team = newTeam;
+        targetProxy.position = newSpawnPosition;
         clients[targetKey] = targetProxy;
 
         Log($"[SERVIDOR] Jugador {guid} ({targetProxy.name}) cambió al equipo {newTeam}");
 
-        BroadcastTeamChange(guid, newTeam);
+        BroadcastTeamChange(guid, newTeam, newSpawnPosition);
     }
-    private void BroadcastTeamChange(string guid, int team)
+    private void BroadcastTeamChange(string guid, int team, Vector3 spawnPosition)
     {
         TeamChangeData teamChange = new TeamChangeData
         {
             guid = guid,
-            team = team
+            team = team,
+            position = spawnPosition
         };
 
         string json = JsonUtility.ToJson(teamChange);
         byte[] packet = Encoding.UTF8.GetBytes("TEAM_CHANGED|" + json);
 
-        int count = 0;
         foreach (var c in clients.Values)
         {
             SendPacket(packet, c.address);
-            count++;
         }
-        Log($"[SERVIDOR] Broadcast cambio de equipo de {guid} al equipo {team} a {count} clientes");
     }
 
     private void HandleDisconnect(string guid)
@@ -412,5 +416,22 @@ public class Server : Networking
     private void Log(string msg)
     {
         logQueue.Enqueue(msg);
+    }
+    private Vector3 GetSpawnPosition(int team)
+    {
+        if (spawnManager == null)
+        {
+            Log($"[SERVIDOR] Warning: SpawnManager no asignado, usando posición por defecto");
+            return Vector3.zero;
+        }
+
+        Vector3 spawnPos = spawnManager.GetSpawnPosition(team);
+
+        if (spawnPos == Vector3.zero)
+        {
+            Log($"[SERVIDOR] Warning: No hay spawns configurados para el equipo {team}");
+        }
+
+        return spawnPos;
     }
 }
