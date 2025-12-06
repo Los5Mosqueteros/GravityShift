@@ -189,6 +189,12 @@ public class Server : Networking
             ProcessShoot(shoot);
             return;
         }
+        if (msg.StartsWith("RESPAWN_REQUEST|"))
+        {
+            string guid = msg.Substring("RESPAWN_REQUEST|".Length);
+            HandleRespawnRequest(guid);
+            return;
+        }
     }
 
     private void RegisterNewClient(EndPoint address, string playerName)
@@ -433,5 +439,48 @@ public class Server : Networking
         }
 
         return spawnPos;
+    }
+    private void HandleRespawnRequest(string guid)
+    {
+        Log($"[SERVIDOR] Solicitud de respawn de {guid}");
+
+        string targetKey = null;
+        ClientProxy targetProxy = default;
+
+        foreach (var kv in clients)
+        {
+            if (kv.Value.guid == guid)
+            {
+                targetKey = kv.Key;
+                targetProxy = kv.Value;
+                break;
+            }
+        }
+
+        if (targetKey == null)
+        {
+            Log($"[SERVIDOR] No se encontró cliente con GUID {guid} para respawn");
+            return;
+        }
+
+        Vector3 spawnPosition = GetSpawnPosition(targetProxy.team);
+
+        targetProxy.position = spawnPosition;
+        targetProxy.health = 100; 
+        clients[targetKey] = targetProxy;
+
+        Log($"[SERVIDOR] Respawn de {guid} en equipo {targetProxy.team} - Pos: {spawnPosition}");
+
+        SendRespawnPacket(targetProxy);
+
+        BroadcastPlayerUpdate(targetProxy);
+    }
+
+    private void SendRespawnPacket(ClientProxy proxy)
+    {
+        string json = JsonUtility.ToJson(proxy);
+        byte[] packet = Encoding.UTF8.GetBytes("RESPAWN|" + json);
+        SendPacket(packet, proxy.address);
+        Log($"[SERVIDOR] Paquete de respawn enviado a {proxy.guid}");
     }
 }

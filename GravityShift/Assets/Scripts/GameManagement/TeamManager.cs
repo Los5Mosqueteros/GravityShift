@@ -4,7 +4,7 @@ using UnityEngine;
 public class TeamManager
 {
     private const int maxTeams = 4;
-    private const int maxPlayersPerTeam = 3;
+    private const int maxPlayersPerTeam = 1;
 
     private Dictionary<string, int> playerTeams = new Dictionary<string, int>();
 

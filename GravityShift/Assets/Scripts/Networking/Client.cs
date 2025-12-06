@@ -80,7 +80,7 @@ public class Client : Networking
         {
             int bytes = socket.EndReceiveFrom(ar, ref from);
             string msg = Encoding.UTF8.GetString(state.buffer, 0, bytes);
-            Debug.Log("[CLIENT] Mensaje recibido: " + msg);
+            //Debug.Log("[CLIENT] Mensaje recibido: " + msg);
 
             OnPacketReceived(msg, from);
         }
@@ -151,6 +151,14 @@ public class Client : Networking
                     remotePlayers.Remove(guid);
                 }
             });
+        }
+
+        if (msg.StartsWith("RESPAWN|"))
+        {
+            string json = msg.Substring("RESPAWN|".Length);
+            ClientProxy proxy = JsonUtility.FromJson<ClientProxy>(json);
+            mainThreadQueue.Enqueue(() => HandleRespawn(proxy));
+            return;
         }
 
         if (msg.StartsWith("HIT_RESULT|"))
@@ -332,6 +340,41 @@ public class Client : Networking
 
         SendPacket(packet, serverEndPoint);
         Debug.Log($"[CLIENT] Solicitando cambio al equipo {newTeam}");
+    }
+    public void RequestRespawn()
+    {
+        if (string.IsNullOrEmpty(GUID))
+        {
+            Debug.LogWarning("[CLIENT] No se puede solicitar respawn: GUID no asignado");
+            return;
+        }
+
+        byte[] packet = Encoding.UTF8.GetBytes("RESPAWN_REQUEST|" + GUID);
+        SendPacket(packet, serverEndPoint);
+        Debug.Log("[CLIENT] Solicitando respawn...");
+    }
+    private void HandleRespawn(ClientProxy proxy)
+    {
+        if (proxy.guid != GUID) return;
+
+        Debug.Log($"[CLIENT] Respawn recibido - Pos: {proxy.position}");
+
+        if (localPlayer != null)
+        {
+            HealthSystem health = localPlayer.GetComponent<HealthSystem>();
+            if (health != null)
+            {
+                health.Respawn(proxy.position);
+            }
+            else
+            {
+                if (localTransform != null)
+                {
+                    localTransform.position = proxy.position;
+                    localRotation.rotation = Quaternion.Euler(proxy.rotation);
+                }
+            }
+        }
     }
     protected override void OnConnectionReset(EndPoint fromAddress)
     {
