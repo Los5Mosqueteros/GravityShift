@@ -197,6 +197,21 @@ public class Client : Networking
 
             return;
         }
+
+        if (msg.StartsWith("HEALTH_UPDATE|"))
+        {
+            string json = msg.Substring("HEALTH_UPDATE|".Length);
+            HealthUpdate update = JsonUtility.FromJson<HealthUpdate>(json);
+
+            mainThreadQueue.Enqueue(() =>
+            {
+               if(update.guid == GUID)
+                {
+                    var health = localPlayer.GetComponent<HealthSystem>();
+                    if (health != null) health.SetHealth(update.health);
+                } 
+            });
+        }
     }
 
     private void HandleServerJoinApproval(ClientProxy proxy)

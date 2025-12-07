@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using Unity.Collections;
 using UnityEngine;
 
 public class ReceiveState
@@ -59,6 +60,13 @@ public class HitResult
 }
 
 [Serializable]
+public class HealthUpdate
+{
+    public string guid;
+    public float health;
+}
+
+[Serializable]
 public class TeamChangeData
 {
     public string guid;
@@ -75,6 +83,7 @@ public class Server : Networking
     private string EndpointKey(EndPoint ep) => ep.ToString();
 
     private ConcurrentQueue<string> logQueue = new ConcurrentQueue<string>();
+    private readonly Queue<Action> mainThreadActions = new Queue<Action>();
 
     [SerializeField] private TMPro.TextMeshProUGUI logText;
     [Header("Spawn Manager")]
@@ -94,6 +103,11 @@ public class Server : Networking
 
     private void Update()
     {
+        while(mainThreadActions.Count > 0)
+        {
+            mainThreadActions.Dequeue()?.Invoke();
+        }
+
         while(logQueue.TryDequeue(out string msg))
         {
             Debug.Log(msg);
@@ -135,12 +149,12 @@ public class Server : Networking
 
     protected override void OnPacketReceived(string msg, EndPoint fromAddress)
     {
-        Log("[SERVIDOR] Procesando mensaje: " + msg);
+        //Log("[SERVIDOR] Procesando mensaje: " + msg);
 
         if (msg.StartsWith("PLAYER_JOIN_REQUEST|"))
         {
             string playerName = msg.Substring("PLAYER_JOIN_REQUEST|".Length);
-            RegisterNewClient(fromAddress, playerName);
+            mainThreadActions.Enqueue(() => RegisterNewClient(fromAddress, playerName));
             return;
         }
 
@@ -186,7 +200,7 @@ public class Server : Networking
             string json = msg.Substring("SHOOT|".Length);
             PlayerShoot shoot = JsonUtility.FromJson<PlayerShoot>(json);
 
-            ProcessShoot(shoot);
+            HandleShoot(shoot);
             return;
         }
         if (msg.StartsWith("RESPAWN_REQUEST|"))
@@ -356,7 +370,7 @@ public class Server : Networking
         }
     }
 
-    private void ProcessShoot(PlayerShoot shoot)
+    private void HandleShoot(PlayerShoot shoot)
     {
         Log("[SERVIDOR] Procesando disparo de " + shoot.shooterGuid);
 
@@ -366,8 +380,9 @@ public class Server : Networking
             if(c.guid == shoot.shooterGuid) shooter = c;
         }
 
-        foreach(var target in clients.Values)
+        foreach(var kv in clients)
         {
+            var target = kv.Value;
             if(target.guid == shooter.guid) continue;
 
             Vector3 toTarget = target.position - shoot.origin;
@@ -378,9 +393,23 @@ public class Server : Networking
             float distance = toTarget.magnitude;
             if(distance > shoot.maxDistance) continue;
 
-            Log("[SERVIDOR] Hit validado a " + target.guid);
+            target.health -= shoot.damage;
+
+            Log("[SERVIDOR] {target.guid} vida: {target.health}");
+
+            clients[kv.Key] = target;
 
             SendHitResult(shooter.guid, target.guid, true, shoot.damage);
+
+            if(target.health <= 0)
+            {
+                HandlePlayerDeath(target);
+            }
+            else
+            {
+                SendHealthUpdate(target);
+            }
+            
             return;
         }
 
@@ -406,6 +435,44 @@ public class Server : Networking
 
             if(hit && c.guid == targetGuid) SendPacket(packet, c.address);
         }
+    }
+
+    private void SendHealthUpdate(ClientProxy proxy)
+    {
+        HealthUpdate update = new HealthUpdate
+        {
+            guid = proxy.guid,
+            health = proxy.health
+        };
+
+        string json = JsonUtility.ToJson(update);
+        byte[] packet = Encoding.UTF8.GetBytes("HEALTH_UPDATE|" + json);
+
+        foreach(var c in clients.Values)
+        {
+            SendPacket(packet, c.address);
+        }
+    }
+
+    private void HandlePlayerDeath(ClientProxy deadPlayer)
+    {
+        Log($"[SERVIDOR] Jugador {deadPlayer.guid} ha muerto.");
+
+        BroadcastPlayerRemoval(deadPlayer.guid);
+
+        deadPlayer.health = 100;
+        deadPlayer.position = GetSpawnPosition(deadPlayer.team);
+
+        foreach(var kv in clients)
+        {
+            if(kv.Value.guid == deadPlayer.guid)
+            {
+                clients[kv.Key] = deadPlayer;
+                break;
+            }
+        }
+
+        SendRespawnPacket(deadPlayer);
     }
 
     protected override void OnConnectionReset(EndPoint fromAddress)

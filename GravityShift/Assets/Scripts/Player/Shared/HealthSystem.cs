@@ -17,25 +17,14 @@ public class HealthSystem : MonoBehaviour
         currentHealth = maxHealth;
     }
 
-    public void TakeDamage(float damage)
+    public void SetHealth(float value)
     {
-        if (isDead) return;
-        currentHealth -= damage;
-        Debug.Log($"{gameObject.name} ha recibido {damage} de daño. Salud actual: {currentHealth}/{maxHealth}");
-        
-        if (currentHealth <= 0)
-        {
-            currentHealth = 0;
-            Die();
-        }
+        currentHealth = Mathf.Clamp(value, 0, maxHealth);
+
+        if(currentHealth <= 0) OnDeath();
     }
 
-    public void Heal(float amount)
-    {
-        currentHealth = Mathf.Min(currentHealth + amount, maxHealth);
-    }
-
-    private void Die()
+    private void OnDeath()
     {
         if (isDead) return;
         isDead = true;

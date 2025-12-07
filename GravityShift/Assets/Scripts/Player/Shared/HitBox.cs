@@ -17,7 +17,7 @@ public class HitBox : MonoBehaviour
         if (healthSystem == null) return;
         
         float finalDamage = damage * damageMultiplier;
-        healthSystem.TakeDamage(finalDamage);
+        //healthSystem.TakeDamage(finalDamage);
     }
 
     public void OnHit(float damage)
