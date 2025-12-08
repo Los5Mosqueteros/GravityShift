@@ -3,72 +3,35 @@ using UnityEngine;
 public class HealthSystem : MonoBehaviour
 {
     [SerializeField] private float maxHealth = 100f;
-    [SerializeField] private HitBox[] hitBoxes;
-    [SerializeField] private float respawnDelay = 0.1f;
+
     private float currentHealth;
-    private bool isDead = false;
+    private bool isDead;
 
     public float CurrentHealth => currentHealth;
-    public float MaxHealth => maxHealth;
     public bool IsDead => isDead;
 
     void Start()
     {
         currentHealth = maxHealth;
+        isDead = false;
     }
 
     public void SetHealth(float value)
     {
+        if (isDead) return;
+
         currentHealth = Mathf.Clamp(value, 0, maxHealth);
 
-        if(currentHealth <= 0) OnDeath();
-    }
-
-    private void OnDeath()
-    {
-        if (isDead) return;
-        isDead = true;
-
-        Debug.Log($"{gameObject.name} ha muerto");
-
-
-        Invoke(nameof(RequestRespawn), respawnDelay);
-    }
-
-    private void RequestRespawn()
-    {
-        Client client = Client.Instance;
-        if (client != null)
+        if (currentHealth <= 0 && !isDead)
         {
-            client.RequestRespawn();
-        }
-        else
-        {
-            Debug.LogError("[HealthSystem] No se encontró instancia de Client");
+            isDead = true;
+            gameObject.SetActive(false);
         }
     }
-    public void Respawn(Vector3 position)
+
+    public void ResetHealth()
     {
-        Debug.Log($"[HealthSystem] Respawneando en {position}");
-        
+        currentHealth = maxHealth;
         isDead = false;
-        currentHealth = maxHealth;       
-
-        Transform controller = transform.Find("First Person Controller");
-        if (controller != null)
-        {
-            controller.position = position;
-        }
-        else
-        {
-            transform.position = position;
-        }
     }
-
-    public float GetHealthPercentage()
-    {
-        return currentHealth / maxHealth;
-    }
-
-
 }

@@ -21,6 +21,8 @@ public class Client : Networking
     private Transform localTransform;
     private Transform localRotation;
 
+    private bool isAlive = true;
+
     [Header("Network")]
     public float sendRate = 0.1f;
 
@@ -153,14 +155,6 @@ public class Client : Networking
             });
         }
 
-        if (msg.StartsWith("RESPAWN|"))
-        {
-            string json = msg.Substring("RESPAWN|".Length);
-            ClientProxy proxy = JsonUtility.FromJson<ClientProxy>(json);
-            mainThreadQueue.Enqueue(() => HandleRespawn(proxy));
-            return;
-        }
-
         if (msg.StartsWith("HIT_RESULT|"))
         {
             string json = msg.Substring("HIT_RESULT|".Length);
@@ -212,6 +206,22 @@ public class Client : Networking
                 } 
             });
         }
+
+        if (msg.StartsWith("PLAYER_DIED|"))
+        {
+            string json = msg.Substring("PLAYER_DIED|".Length);
+            PlayerDeathData dead = JsonUtility.FromJson<PlayerDeathData>(json);
+
+            mainThreadQueue.Enqueue(() => HandlePlayerDeath(dead.guid));
+        }
+
+        if (msg.StartsWith("PLAYER_RESPAWN|"))
+        {
+            string json = msg.Substring("PLAYER_RESPAWN|".Length);
+            PlayerRespawnData data = JsonUtility.FromJson<PlayerRespawnData>(json);
+
+            mainThreadQueue.Enqueue(() => HandleRespawn(data));
+        }
     }
 
     private void HandleServerJoinApproval(ClientProxy proxy)
@@ -239,6 +249,19 @@ public class Client : Networking
         Debug.Log("[CLIENT] Player local instanciado en " + proxy.position);
 
         StartStateSyncLoop();
+    }
+
+    private void HandlePlayerDeath(string guid)
+    {
+        if(guid == GUID)
+        {
+            isAlive = false;
+            localPlayer.SetActive(false);
+        }
+        else if(remotePlayers.TryGetValue(guid, out var obj))
+        {
+            obj.SetActive(false);
+        }
     }
 
     private void SpawnRemotePlayer(ClientProxy proxy)
@@ -287,6 +310,7 @@ public class Client : Networking
             obj.transform.rotation = Quaternion.Euler(update.rotation);
         }
     }
+
     private void HandleTeamChange(TeamChangeData teamChange)
     {
         Debug.Log($"[CLIENT] Jugador {teamChange.guid} cambió al equipo {teamChange.team}");
@@ -323,6 +347,8 @@ public class Client : Networking
 
     private void SendPlayerState()
     {
+        if(!isAlive) return;
+
         PlayerUpdate update = new PlayerUpdate
         {
             guid = GUID,
@@ -336,6 +362,7 @@ public class Client : Networking
 
         SendPacket(packet, serverEndPoint);
     }
+
     public void RequestTeamChange(int newTeam)
     {
         if (string.IsNullOrEmpty(GUID))
@@ -356,41 +383,29 @@ public class Client : Networking
         SendPacket(packet, serverEndPoint);
         Debug.Log($"[CLIENT] Solicitando cambio al equipo {newTeam}");
     }
-    public void RequestRespawn()
+
+    private void HandleRespawn(PlayerRespawnData data)
     {
-        if (string.IsNullOrEmpty(GUID))
+        if (data.guid == GUID)
         {
-            Debug.LogWarning("[CLIENT] No se puede solicitar respawn: GUID no asignado");
-            return;
+            isAlive = true;
+
+            localPlayer.transform.position = data.position;
+            localPlayer.SetActive(true);
+
+            var health = localPlayer.GetComponent<HealthSystem>();
+            if (health != null) health.ResetHealth();
         }
-
-        byte[] packet = Encoding.UTF8.GetBytes("RESPAWN_REQUEST|" + GUID);
-        SendPacket(packet, serverEndPoint);
-        Debug.Log("[CLIENT] Solicitando respawn...");
-    }
-    private void HandleRespawn(ClientProxy proxy)
-    {
-        if (proxy.guid != GUID) return;
-
-        Debug.Log($"[CLIENT] Respawn recibido - Pos: {proxy.position}");
-
-        if (localPlayer != null)
+        else
         {
-            HealthSystem health = localPlayer.GetComponent<HealthSystem>();
-            if (health != null)
+            if (remotePlayers.TryGetValue(data.guid, out var obj))
             {
-                health.Respawn(proxy.position);
-            }
-            else
-            {
-                if (localTransform != null)
-                {
-                    localTransform.position = proxy.position;
-                    localRotation.rotation = Quaternion.Euler(proxy.rotation);
-                }
+                obj.SetActive(true);
+                obj.transform.position = data.position;
             }
         }
     }
+
     protected override void OnConnectionReset(EndPoint fromAddress)
     {
         Debug.Log("[CLIENT] Conexión reseteada por el servidor");

@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net;
@@ -24,8 +25,8 @@ public struct ClientProxy
     public Vector3 rotation;
 
     public int team;
-
     public float health;
+    public bool isDead;
 }
 
 [Serializable]
@@ -74,6 +75,20 @@ public class TeamChangeData
     public Vector3 position;
 }
 
+[Serializable]
+public class PlayerDeathData
+{
+    public string guid;
+}
+
+[Serializable]
+public class PlayerRespawnData
+{
+    public string guid;
+    public Vector3 position;
+    public int team;
+}
+
 public class Server : Networking
 {
     private Dictionary<string, ClientProxy> clients = new();
@@ -92,6 +107,9 @@ public class Server : Networking
     protected override void Start()
     {
         base.Start();
+        spawnManager = FindFirstObjectByType<SpawnManager>();
+        if (spawnManager == null) Debug.LogError("[SERVER] SpawnManager NO encontrado en la escena");
+
         Log("[SERVIDOR] Iniciando servidor UDP...");
 
         socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
@@ -166,6 +184,8 @@ public class Server : Networking
             string key = EndpointKey(fromAddress);
             if (clients.TryGetValue(key, out var proxy))
             {
+                if(proxy.isDead) return;
+
                 proxy.position = update.position;
                 proxy.rotation = update.rotation;
                 clients[key] = proxy;
@@ -201,12 +221,6 @@ public class Server : Networking
             PlayerShoot shoot = JsonUtility.FromJson<PlayerShoot>(json);
 
             HandleShoot(shoot);
-            return;
-        }
-        if (msg.StartsWith("RESPAWN_REQUEST|"))
-        {
-            string guid = msg.Substring("RESPAWN_REQUEST|".Length);
-            HandleRespawnRequest(guid);
             return;
         }
     }
@@ -295,6 +309,7 @@ public class Server : Networking
             SendPacket(packet, kv.address);
         }
     }
+
     private void HandleTeamChange(string guid, int newTeam)
     {
         string targetKey = null;
@@ -327,6 +342,7 @@ public class Server : Networking
 
         BroadcastTeamChange(guid, newTeam, newSpawnPosition);
     }
+
     private void BroadcastTeamChange(string guid, int team, Vector3 spawnPosition)
     {
         TeamChangeData teamChange = new TeamChangeData
@@ -401,7 +417,7 @@ public class Server : Networking
 
             SendHitResult(shooter.guid, target.guid, true, shoot.damage);
 
-            if(target.health <= 0)
+            if(target.health <= 0 && !target.isDead)
             {
                 HandlePlayerDeath(target);
             }
@@ -458,10 +474,8 @@ public class Server : Networking
     {
         Log($"[SERVIDOR] Jugador {deadPlayer.guid} ha muerto.");
 
-        BroadcastPlayerRemoval(deadPlayer.guid);
-
-        deadPlayer.health = 100;
-        deadPlayer.position = GetSpawnPosition(deadPlayer.team);
+        deadPlayer.isDead = true;
+        deadPlayer.health = 0;
 
         foreach(var kv in clients)
         {
@@ -472,7 +486,46 @@ public class Server : Networking
             }
         }
 
-        SendRespawnPacket(deadPlayer);
+        SendPlayerDeath(deadPlayer.guid);
+
+        mainThreadActions.Enqueue(() => StartCoroutine(RespawnAfterDelay(deadPlayer.guid, 5f)));
+    }
+
+    private void SendPlayerDeath(string guid)
+    {
+        PlayerDeathData data = new PlayerDeathData { guid = guid };
+        string json = JsonUtility.ToJson(data);
+        byte[] packet = Encoding.UTF8.GetBytes("PLAYER_DIED|" + json);
+
+        foreach (var c in clients.Values) SendPacket(packet, c.address);
+    }
+
+    private IEnumerator RespawnAfterDelay(string guid, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+
+        string key = null;
+        ClientProxy proxy = default;
+
+        foreach (var kv in clients)
+        {
+            if (kv.Value.guid == guid)
+            {
+                key = kv.Key;
+                proxy = kv.Value;
+                break;
+            }
+        }
+
+        if (key == null) yield break;
+
+        proxy.isDead = false;
+        proxy.health = 100;
+        proxy.position = GetSpawnPosition(proxy.team);
+
+        clients[key] = proxy;
+
+        BroadcastPlayerRespawn(proxy);
     }
 
     protected override void OnConnectionReset(EndPoint fromAddress)
@@ -490,6 +543,7 @@ public class Server : Networking
     {
         logQueue.Enqueue(msg);
     }
+    
     private Vector3 GetSpawnPosition(int team)
     {
         if (spawnManager == null)
@@ -507,47 +561,22 @@ public class Server : Networking
 
         return spawnPos;
     }
-    private void HandleRespawnRequest(string guid)
+
+    private void BroadcastPlayerRespawn(ClientProxy proxy)
     {
-        Log($"[SERVIDOR] Solicitud de respawn de {guid}");
-
-        string targetKey = null;
-        ClientProxy targetProxy = default;
-
-        foreach (var kv in clients)
+        PlayerRespawnData data = new PlayerRespawnData
         {
-            if (kv.Value.guid == guid)
-            {
-                targetKey = kv.Key;
-                targetProxy = kv.Value;
-                break;
-            }
-        }
+            guid = proxy.guid,
+            position = proxy.position,
+            team = proxy.team
+        };
 
-        if (targetKey == null)
+        string json = JsonUtility.ToJson(data);
+        byte[] packet = Encoding.UTF8.GetBytes("PLAYER_RESPAWN|" + json);
+
+        foreach (var c in clients.Values)
         {
-            Log($"[SERVIDOR] No se encontró cliente con GUID {guid} para respawn");
-            return;
+            SendPacket(packet, c.address);
         }
-
-        Vector3 spawnPosition = GetSpawnPosition(targetProxy.team);
-
-        targetProxy.position = spawnPosition;
-        targetProxy.health = 100; 
-        clients[targetKey] = targetProxy;
-
-        Log($"[SERVIDOR] Respawn de {guid} en equipo {targetProxy.team} - Pos: {spawnPosition}");
-
-        SendRespawnPacket(targetProxy);
-
-        BroadcastPlayerUpdate(targetProxy);
-    }
-
-    private void SendRespawnPacket(ClientProxy proxy)
-    {
-        string json = JsonUtility.ToJson(proxy);
-        byte[] packet = Encoding.UTF8.GetBytes("RESPAWN|" + json);
-        SendPacket(packet, proxy.address);
-        Log($"[SERVIDOR] Paquete de respawn enviado a {proxy.guid}");
     }
 }
