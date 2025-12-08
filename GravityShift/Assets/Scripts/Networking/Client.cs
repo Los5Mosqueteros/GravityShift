@@ -30,30 +30,58 @@ public class Client : Networking
 
     private readonly Queue<Action> mainThreadQueue = new Queue<Action>();
 
-    protected override void Start()
+    protected void OnEnable()
     {
-        if(Instance == null)
-        {
-            Instance = this;   
-        }
-        else
+        if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
+            return;
         }
 
-        base.Start();
-        Debug.Log("[CLIENT] Iniciando cliente...");
+        Instance = this;
 
-        socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-        socket.Bind(new IPEndPoint(IPAddress.Any, 0));
+        try
+        {
+            Debug.Log("[CLIENT] Iniciando cliente...");
 
-        serverEndPoint = new IPEndPoint(IPAddress.Parse(LobbyUI.SelectedIP), port);
-        Debug.Log("[CLIENT] Conectando a servidor " + serverEndPoint);
+            socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+            socket.Bind(new IPEndPoint(IPAddress.Any, 0));
 
-        byte[] joinRequest = Encoding.UTF8.GetBytes("PLAYER_JOIN_REQUEST|" + LobbyUI.PlayerName);
-        SendPacket(joinRequest, serverEndPoint);
+            if (string.IsNullOrEmpty(LobbyUI.SelectedIP))
+            {
+                throw new Exception("IP Address is empty");
+            }
 
-        BeginReceive();
+            serverEndPoint = new IPEndPoint(IPAddress.Parse(LobbyUI.SelectedIP), port);
+            Debug.Log("[CLIENT] Conectando a servidor " + serverEndPoint);
+
+            byte[] joinRequest = Encoding.UTF8.GetBytes("PLAYER_JOIN_REQUEST|" + LobbyUI.PlayerName);
+            SendPacket(joinRequest, serverEndPoint);
+
+            BeginReceive();
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"[CLIENT] Error initiating connection: {e.Message}");
+
+            LobbyUI ui = FindFirstObjectByType<LobbyUI>();
+            if (ui != null)
+            {
+                ui.OnConnectionFailed("Invalid IP Address");
+            }
+
+            gameObject.SetActive(false);
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (Instance == this)
+        {
+            Instance = null;
+        }
+
+        try { socket?.Close(); } catch { }
     }
 
     private void Update()
@@ -238,7 +266,7 @@ public class Client : Networking
             return;
         }
 
-        localTransform = controller; 
+        localTransform = controller;
         localRotation = controller;
 
         PlayerAppearance appearance = localPlayer.GetComponentInChildren<PlayerAppearance>();
@@ -247,6 +275,9 @@ public class Client : Networking
             appearance.SetTeamColor(currentTeam);
         }
         Debug.Log("[CLIENT] Player local instanciado en " + proxy.position);
+
+
+        FindFirstObjectByType<LobbyUI>()?.OnConnectionSuccess();
 
         StartStateSyncLoop();
     }
@@ -417,10 +448,10 @@ public class Client : Networking
         SendDisconnect();
     }
 
-    private void OnDisable()
-    {
-        if(socket != null) SendDisconnect();
-    }
+    //private void OnDisable()
+    //{
+    //    if(socket != null) SendDisconnect();
+    //}
 
     private void SendDisconnect()
     {
