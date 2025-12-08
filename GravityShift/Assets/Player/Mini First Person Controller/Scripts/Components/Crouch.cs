@@ -22,6 +22,15 @@ public class Crouch : MonoBehaviour
     [HideInInspector]
     public float? defaultColliderHeight;
 
+
+    [Header("Visual Scaling")]
+    [Tooltip("El objeto visual (Mesh) del personaje.")]
+    public Transform visualMesh;
+    [Tooltip("La escala en Y cuando está agachado (ej. 0.5 es la mitad).")]
+    public float crouchVisualScaleY = 0.5f;
+    [HideInInspector] public Vector3? defaultMeshScale;
+    [HideInInspector] public Vector3? defaultMeshLocalPosition;
+
     public bool IsCrouched { get; private set; }
     public event System.Action CrouchStart, CrouchEnd;
 
@@ -76,6 +85,30 @@ public class Crouch : MonoBehaviour
                 colliderToLower.center = Vector3.up * colliderToLower.height * .5f;
             }
 
+            if (visualMesh)
+            {
+                // Guardar valores originales si no existen
+                if (!defaultMeshScale.HasValue)
+                    defaultMeshScale = visualMesh.localScale;
+                if (!defaultMeshLocalPosition.HasValue)
+                    defaultMeshLocalPosition = visualMesh.localPosition;
+
+                // Calcular la nueva escala
+                Vector3 targetScale = defaultMeshScale.Value;
+                targetScale.y = crouchVisualScaleY;
+
+                // Aplicar escala
+                visualMesh.localScale = targetScale;
+
+                // CORRECCIÓN: Bajar la posición proporcionalmente a la escala
+                // Esto asume que la cápsula estaba tocando el suelo originalmente (Y=0 del padre)
+                // y que su pivote está en el centro.
+                float scaleRatio = crouchVisualScaleY / defaultMeshScale.Value.y;
+                float newPosY = defaultMeshLocalPosition.Value.y * scaleRatio;
+
+                visualMesh.localPosition = new Vector3(defaultMeshLocalPosition.Value.x, newPosY, defaultMeshLocalPosition.Value.z);
+            }
+
             // Set IsCrouched state.
             if (!IsCrouched)
             {
@@ -99,6 +132,13 @@ public class Crouch : MonoBehaviour
                 {
                     colliderToLower.height = defaultColliderHeight.Value;
                     colliderToLower.center = Vector3.up * colliderToLower.height * .5f;
+                }
+
+                // Restaurar Malla Visual y Posición
+                if (visualMesh && defaultMeshScale.HasValue && defaultMeshLocalPosition.HasValue)
+                {
+                    visualMesh.localScale = defaultMeshScale.Value;
+                    visualMesh.localPosition = defaultMeshLocalPosition.Value;
                 }
 
                 // Reset IsCrouched.
