@@ -1340,6 +1340,8 @@ MonoBehaviour:
   shootSounds:
   - {fileID: 8300000, guid: 371a63c3d9f75f043a2481a44111b21e, type: 3}
   reloadSound: {fileID: 8300000, guid: 0d64613d107b2c448874339207fe0c01, type: 3}
+  tracerPrefab: {fileID: 5147616164989891924, guid: 0a5faf5265714d54889f29c84d906280, type: 3}
+  tracerSpeed: 200
 --- !u!95 &6963141435246344390
 Animator:
   serializedVersion: 7

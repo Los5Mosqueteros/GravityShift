@@ -17,7 +17,13 @@ public class RifleRaycast : MonoBehaviour
     [SerializeField] private AudioSource audioSource;
     [SerializeField] private AudioClip[] shootSounds;
     [SerializeField] private AudioClip reloadSound;
-    
+
+    // <--- ADDED: Tracer Variables
+    [Header("Visuals")]
+    [SerializeField] private GameObject tracerPrefab; // Drag your BulletTracer prefab here
+    [SerializeField] private float tracerSpeed = 200f; // Speed of the visual bullet
+                                                       // ---------------------------
+
     private Camera mainCamera;
     private bool isReloading = false;
     private WeaponHolder weaponHolder;
@@ -42,7 +48,7 @@ public class RifleRaycast : MonoBehaviour
     void Update()
     {
         animator.SetBool("IsShooting", Input.GetMouseButton(0) && currentAmmo > 0 && !isReloading);
-        
+
         if (Input.GetKeyDown(KeyCode.R) && currentAmmo < maxAmmo && !isReloading)
         {
             isReloading = true;
@@ -56,22 +62,26 @@ public class RifleRaycast : MonoBehaviour
         if (currentAmmo <= 0) return;
 
         currentAmmo--;
-        
+
         if (audioSource != null && shootSounds.Length > 0)
         {
             audioSource.pitch = Random.Range(0.9f, 1.1f);
             audioSource.PlayOneShot(shootSounds[0]);
         }
-        
+
         CameraShake.Instance?.Shake(0.08f, 0.04f);
 
         Ray ray = mainCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0));
         RaycastHit hit;
-        
+
+        Vector3 targetPoint; // <--- ADDED: Store where we hit (or missed)
+
         if (Physics.Raycast(ray, out hit, range))
         {
             Debug.DrawLine(ray.origin, hit.point, Color.red, 1f);
-            
+
+            targetPoint = hit.point; // <--- ADDED: We hit something, so that's the target
+
             PlayerShoot shoot = new PlayerShoot
             {
                 shooterGuid = Client.Instance.GetGUID(),
@@ -90,6 +100,28 @@ public class RifleRaycast : MonoBehaviour
         else
         {
             Debug.DrawRay(ray.origin, ray.direction * range, Color.yellow, 1f);
+
+            // <--- ADDED: We missed, so target is a point far away in the air
+            targetPoint = ray.origin + (ray.direction * range);
+        }
+
+        // <--- ADDED: Spawn the visual tracer
+        CreateTracer(targetPoint);
+    }
+
+    // <--- ADDED: Helper method to spawn the tracer
+    private void CreateTracer(Vector3 end)
+    {
+        if (tracerPrefab == null || muzzle == null) return;
+
+        // Instantiate the tracer at the gun muzzle
+        GameObject tracerObj = Instantiate(tracerPrefab, muzzle.position, Quaternion.identity);
+
+        // Initialize the tracer script so it moves toward the 'end' point
+        BulletTracer tracerScript = tracerObj.GetComponent<BulletTracer>();
+        if (tracerScript != null)
+        {
+            tracerScript.Init(end, tracerSpeed);
         }
     }
 
