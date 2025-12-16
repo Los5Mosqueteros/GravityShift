@@ -27,6 +27,7 @@ public struct ClientProxy
     public int team;
     public float health;
     public bool isDead;
+    public int lastSequenceId;
 }
 
 [Serializable]
@@ -36,6 +37,7 @@ public class PlayerUpdate
     public Vector3 position;
     public Vector3 rotation;
     public int team;
+    public int sequenceId;
 }
 
 [Serializable]
@@ -186,6 +188,11 @@ public class Server : Networking
             {
                 if(proxy.isDead) return;
 
+                if (update.sequenceId <= proxy.lastSequenceId)
+                    return; // paquete viejo, se descarta
+
+                proxy.lastSequenceId = update.sequenceId;
+
                 proxy.position = update.position;
                 proxy.rotation = update.rotation;
                 clients[key] = proxy;
@@ -246,7 +253,9 @@ public class Server : Networking
             position = spawnPosition,
             rotation = Vector3.zero,
             team = assignedTeam,
-            health = 100
+            health = 100,
+            isDead = false,
+            lastSequenceId = 0
         };
 
         clients[key] = proxy;
