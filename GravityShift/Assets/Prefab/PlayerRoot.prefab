@@ -1762,6 +1762,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   maxHealth: 100
+  bodyRenderers:
+  - {fileID: 4844543269331078788}
+  bodyColliders: []
+  scriptsToDisable:
+  - {fileID: 1825743824163475258}
+  - {fileID: 1877435577042814190}
+  - {fileID: 8047107291642710860}
+  - {fileID: 1439307604722292079}
 --- !u!1 &3198396164089710152
 GameObject:
   m_ObjectHideFlags: 0
