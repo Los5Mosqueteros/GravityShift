@@ -21,6 +21,8 @@ public class Client : Networking
     private Transform localTransform;
     private Transform localRotation;
 
+    private int localSequenceId = 0;
+
     private bool isAlive = true;
 
     [Header("Network")]
@@ -378,7 +380,7 @@ public class Client : Networking
 
     private void SendPlayerState()
     {
-        if(!isAlive) return;
+        if (!isAlive) return;
 
         PlayerUpdate update = new PlayerUpdate
         {
@@ -386,12 +388,11 @@ public class Client : Networking
             position = localTransform.position,
             rotation = localRotation.eulerAngles,
             team = currentTeam,
+            sequenceId = ++localSequenceId
         };
 
         string json = JsonUtility.ToJson(update);
-        byte[] packet = Encoding.UTF8.GetBytes("UPDATE|" + json);
-
-        SendPacket(packet, serverEndPoint);
+        SendPacket(Encoding.UTF8.GetBytes("UPDATE|" + json), serverEndPoint);
     }
 
     public void RequestTeamChange(int newTeam)
